@@ -522,8 +522,7 @@ const roulette = (() => {
     $('btn-relancer').hidden = !avecContrat || !etat.relancePossible;
 
     $('aide').textContent =
-      e === 'propose' ? t('aide_propose')
-      : e === 'accepte' ? (etat.pilote ? t('aide_pilote') + etat.pilote
+      e === 'accepte' ? (etat.pilote ? t('aide_pilote') + etat.pilote
         : etat.reglages.pilote ? t('aide_ouvre')
         : t('aide_manuel'))
       : etat.dansLeContrat ? t('aide_contrat')

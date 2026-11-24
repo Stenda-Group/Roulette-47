@@ -82,6 +82,9 @@ struct SEntree {
     // 47 y part en costume : aucune tenue imposée par l'entrée, ou une tenue
     // « HERO » (costumes de 47 : TOKEN_OUTFIT_HERO_…, …_HERO_EDGYSUIT).
     bool m_EnCostume = true;
+    // La tenue de départ imposée (« Equip ») : des jetons TOKEN_OUTFIT_…, vide
+    // si 47 part dans sa tenue.
+    std::vector<std::string> m_Tenues;
 };
 
 // La page de préparation, lue.
@@ -145,7 +148,13 @@ bool TirerDestination(const std::vector<SDestination>& p_Destinations, std::mt19
 // Entrée, arme dissimulée et équipement, cohérents avec les méthodes tirées
 // (une seringue létale pour « poison injecté »…).
 SPreparation TirerPreparation(const SPlanification& p_Planif, const std::vector<SObjetInventaire>& p_Inventaire,
-                              const STirage& p_Tirage, EMode p_Mode, std::mt19937& p_Hasard);
+                              const STirage& p_Tirage, EMode p_Mode, std::mt19937& p_Hasard,
+                              const std::vector<std::string>& p_JetonsVoulus = {});
+
+// Freestyle : les jetons de tenue (TOKEN_OUTFIT_…) des entrées de la mission qui
+// font partir 47 dans l'une des tenues données, par leur nom interne du dépôt
+// (« Fox_Worker_Bartender_M_… » ↔ TOKEN_OUTFIT_FOX_WORKER_BARTENDER).
+std::vector<std::string> JetonsDesTenues(const SPlanification& p_Planif, const std::vector<std::string>& p_NomsInternes);
 
 // ---------------------------------------------------------------- Écriture
 

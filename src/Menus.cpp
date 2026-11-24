@@ -80,6 +80,7 @@ namespace {
         if (const auto& E = Chemin(p_Proprietes, { "Equip" }); E.is_array() && !E.empty()) {
             p_Entree.m_EnCostume = false;
             for (const auto& t : E) {
+                if (t.is_string()) p_Entree.m_Tenues.push_back(t.get<std::string>());
                 if (t.is_string() && t.get<std::string>().find("HERO") != std::string::npos) p_Entree.m_EnCostume = true;
             }
         }
@@ -350,6 +351,23 @@ std::vector<SEntree> EntreesPourMission(const std::vector<SEntree>& p_Possedees,
     return s_Choix.empty() ? s_DuLieu : s_Choix;
 }
 
+std::vector<std::string> JetonsDesTenues(const SPlanification& p_Planif, const std::vector<std::string>& p_NomsInternes) {
+    std::vector<std::string> s_Jetons;
+    for (const auto& e : p_Planif.m_Entrees) {
+        for (const auto& j : e.m_Tenues) {
+            auto s_Jeton = Haut(j);
+            if (s_Jeton.rfind("TOKEN_OUTFIT_", 0) != 0) continue;
+            const auto s_Nom = s_Jeton.substr(13) + "_";
+            for (const auto& n : p_NomsInternes) {
+                if ((Haut(n) + "_").rfind(s_Nom, 0) == 0 && std::ranges::find(s_Jetons, s_Jeton) == s_Jetons.end()) {
+                    s_Jetons.push_back(s_Jeton);
+                }
+            }
+        }
+    }
+    return s_Jetons;
+}
+
 std::vector<std::string> CiblesDesObjectifs(const json& p_Objectifs) {
     std::vector<std::string> s_Cibles;
     if (!p_Objectifs.is_array()) return s_Cibles;
@@ -501,7 +519,8 @@ bool TirerDestination(const std::vector<SDestination>& p_Destinations, std::mt19
 }
 
 SPreparation TirerPreparation(const SPlanification& p_Planif, const std::vector<SObjetInventaire>& p_Inventaire,
-                              const STirage& p_Tirage, EMode p_Mode, std::mt19937& p_Hasard) {
+                              const STirage& p_Tirage, EMode p_Mode, std::mt19937& p_Hasard,
+                              const std::vector<std::string>& p_JetonsVoulus) {
     SPreparation p;
     p.m_IdContrat = p_Planif.m_IdContrat;
 
@@ -550,6 +569,17 @@ SPreparation TirerPreparation(const SPlanification& p_Planif, const std::vector<
         std::erase_if(s_Candidates, [](const SEntree* e) { return !e->m_EnCostume; });
         if (p_Mode == EMode::Assassin) Resserrer([](const SEntree& e) { return e.m_ArmePermise; });
         Resserrer([](const SEntree& e) { return e.m_Equipements >= 2; });
+    }
+
+    // Freestyle : une cible à tuer dans une tenue donnée, et une entrée qui fait
+    // partir 47 dans cette tenue — on part de là (Julien, 24/11/2026).
+    if (p_Mode == EMode::Freestyle && !p_JetonsVoulus.empty()) {
+        Resserrer([&](const SEntree& e) {
+            for (const auto& j : e.m_Tenues) {
+                if (std::ranges::find(p_JetonsVoulus, Haut(j)) != p_JetonsVoulus.end()) return true;
+            }
+            return false;
+        });
     }
 
     if (!s_Candidates.empty()) {

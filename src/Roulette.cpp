@@ -149,7 +149,7 @@ void Roulette::ReprendreAncienDossier() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.14 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v0.15 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
 
     if (!Moteur::Resoudre()) {
@@ -944,7 +944,22 @@ void Roulette::TirerAvantMission() {
     Tirer(t, m_Reglages, m_Hasard);
 
     if (m_Reglages.m_ImposerPreparation) {
-        t.m_Preparation = TirerPreparation(m_Planif, m_Inventaire, t, m_Reglages.m_Mode, m_Hasard);
+        // Freestyle : les tenues imposées aux cibles, par leur nom interne.
+        std::vector<std::string> s_Jetons;
+        if (m_Reglages.m_Mode == EMode::Freestyle) {
+            std::vector<std::string> s_Noms;
+            for (const auto& c : t.m_Cibles) {
+                if (c.m_Tenue < 0 || c.m_Tenue >= static_cast<int>(t.m_Tenues.size())) continue;
+                const auto& s_Tenue = t.m_Tenues[c.m_Tenue];
+                if (s_Tenue.m_EstCostume) continue;
+                if (const auto* e = m_Depot.Trouver(s_Tenue.m_Id); e && !e->m_NomCommun.empty()) s_Noms.push_back(e->m_NomCommun);
+            }
+            s_Jetons = JetonsDesTenues(m_Planif, s_Noms);
+        }
+
+        t.m_Preparation = TirerPreparation(m_Planif, m_Inventaire, t, m_Reglages.m_Mode, m_Hasard, s_Jetons);
+        if (!s_Jetons.empty()) Diag("Freestyle : entrée dans la tenue d'une cible possible ({} jeton(s)), entrée « {} ».",
+                                    s_Jetons.size(), t.m_Preparation.m_Entree.m_Nom);
 
         if (m_EntreesReperees.contains(t.m_Preparation.m_Entree.m_Id) && EcarterComplication(t, "sans_etre_repere")) {
             Diag("Entrée « {} » : 47 y est repéré dès le départ, « Ne pas être repéré » écartée.", t.m_Preparation.m_Entree.m_Nom);

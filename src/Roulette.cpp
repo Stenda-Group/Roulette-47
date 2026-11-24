@@ -149,7 +149,7 @@ void Roulette::ReprendreAncienDossier() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.13 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v0.14 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
 
     if (!Moteur::Resoudre()) {
@@ -1378,6 +1378,7 @@ void Roulette::TraiterEvenement(const Glacier::Objet& p_Evenement) {
                 // avec ou sans roulette.
                 m_DemandeReleve = true;
                 m_ContratLance = true;
+                m_DernierEssaiNiveau = -1000.0;
                 m_Rompu = false;
                 s_Change = true;
 
@@ -1556,6 +1557,17 @@ bool Roulette::PreparerNiveau() {
         return false;
     }
 
+    // Un niveau pas encore prêt (personnages en cours de chargement) est
+    // relu toutes les 5 s, pas à chaque image : à Hawke's Bay, sans cible
+    // déclarée, l'essai se répétait 300 fois par seconde.
+    if (Maintenant() - m_DernierEssaiNiveau < 5.0) return false;
+
+    // Un nouvel essai après un échec ne réécrit pas tout le relevé au journal.
+    struct SMuet {
+        explicit SMuet(bool p_Muet) { g_DiagMuet = p_Muet; }
+        ~SMuet() { g_DiagMuet = false; }
+    } s_Muet(m_DernierEssaiNiveau > 0.0);
+
     m_Depot.Charger();
     ChoisirImagesObjets();
 
@@ -1732,10 +1744,18 @@ bool Roulette::PreparerNiveau() {
         std::set<std::string> s_NomsVus;
         size_t s_AvecPortrait = 0;
 
+        size_t s_Presents = 0, s_Morts = 0, s_Figurants = 0, s_Cibles = 0;
+        std::string s_Exemples;
+
         for (const auto& s_Ref : Glacier::Acteurs()) {
             auto* s_Acteur = s_Ref.m_pInterface;
+            if (!s_Acteur) continue;
+            ++s_Presents;
+            if (s_Exemples.size() < 300) s_Exemples += " | " + VersTexte(s_Acteur->Nom());
 
-            if (!s_Acteur || !s_Acteur->Vivant() || s_Acteur->Figurant() || s_Acteur->CibleDuContrat()) continue;
+            if (!s_Acteur->Vivant()) { ++s_Morts; continue; }
+            if (s_Acteur->Figurant()) { ++s_Figurants; continue; }
+            if (s_Acteur->CibleDuContrat()) { ++s_Cibles; continue; }
 
             SPnj s_Pnj;
             s_Pnj.m_Nom = VersTexte(s_Acteur->Nom());
@@ -1760,11 +1780,18 @@ bool Roulette::PreparerNiveau() {
             m_Pnj.push_back(std::move(s_Pnj));
         }
 
+        if (m_Pnj.empty()) {
+            Diag("Aucun PNJ : {} personnage(s), dont {} non vivant(s), {} figurant(s), {} cible(s) ; noms :{}",
+                 s_Presents, s_Morts, s_Figurants, s_Cibles, s_Exemples);
+        }
         Diag("{} PNJ peuvent devenir cibles, dont {} avec un portrait du dépôt.", m_Pnj.size(), s_AvecPortrait);
         RetenirPnjDuLieu();
     }
 
-    return !m_CiblesContrat.empty();
+    // Réussi s'il y a des cibles, ou au moins des PNJ (mission sans cible déclarée).
+    const bool s_Pret = !m_CiblesContrat.empty() || !m_Pnj.empty();
+    m_DernierEssaiNiveau = s_Pret ? -1000.0 : Maintenant();
+    return s_Pret;
 }
 
 // Les cibles du contrat, puis les PNJ tirés au sort (thread du jeu, sous verrou).
@@ -1943,23 +1970,30 @@ void Roulette::ChoisirImagesObjets() {
         }
     }
 
-    // Le costume de 47 : celui avec lequel la mission commence, s'il en est un.
+    // Le costume de 47 : toujours son costume d'origine (Julien, 24/11/2026),
+    // quel que soit celui avec lequel la dernière mission a commencé. Repli :
+    // parmi les fiches « signature », le nom le plus court (les variantes,
+    // « with Gloves »…, l'allongent).
     m_ImageCostume.clear();
-
-    if (const auto* s_Contexte = Glacier::Contexte()) {
-        const auto s_Depart = s_Contexte->DeguisementDeDepart().EnTexte();
-        if (const auto* e = m_Depot.Trouver(s_Depart); e && e->m_EstCostume) m_ImageCostume = e->m_Image;
-    }
-
-    // Sinon le costume emblématique (« Signature Suit »).
-    if (m_ImageCostume.empty()) {
+    {
+        const EntreeDepot* s_Meilleur = nullptr;
+        std::string s_Candidats;
         for (const auto& [s_Id, e] : m_Depot.Entrees()) {
-            if (e.m_EstCostume && !e.m_Image.empty() &&
-                EnMinuscules(e.m_NomCommun + " " + e.m_Nom).find("signature") != std::string::npos) {
-                m_ImageCostume = e.m_Image;
-                break;
+            if (!e.m_EstCostume || e.m_Image.empty()) continue;
+            const auto s_Nom = EnMinuscules(e.m_NomCommun);
+            if (s_Nom.find("signature") == std::string::npos) continue;
+            s_Candidats += " | " + e.m_NomCommun + " (" + e.m_Id + ")";
+            if (!s_Meilleur || e.m_NomCommun.size() < s_Meilleur->m_NomCommun.size() ||
+                (e.m_NomCommun.size() == s_Meilleur->m_NomCommun.size() && e.m_Id < s_Meilleur->m_Id)) {
+                s_Meilleur = &e;
             }
         }
+        // « HitmanSuit » : le costume noir, chemise blanche, cravate rouge,
+        // celui de l'image « 47_outfits_signaturesuit ». Les fiches nommées
+        // « Signature Suit » montrent parfois un col roulé.
+        if (const auto* e = m_Depot.Trouver("4fc9396e-2619-4e66-a51e-2bd366230da7"); e && !e->m_Image.empty()) s_Meilleur = e;
+        if (s_Meilleur) m_ImageCostume = s_Meilleur->m_Image;
+        Diag("Costume de 47 : « {} » parmi{}", s_Meilleur ? s_Meilleur->m_NomCommun : std::string("aucun"), s_Candidats);
     }
 
     Diag("Image du costume de 47 : « {} »", m_ImageCostume);
@@ -1971,10 +2005,22 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
     using nlohmann::json;
     std::lock_guard s_Verrou(m_Verrou);
 
-    const auto MethodeJson = [this](int i) -> json {
+    // L'arme à feu tirée à la préparation : sous une cible à tuer avec ce type
+    // d'arme, c'est sa photo qui s'affiche (Julien, 24/11/2026), pas celle
+    // d'un modèle générique.
+    std::string s_ImageArme, s_TypeArme;
+    if (const auto& a = m_Tirage.m_Preparation.m_Arme; !a.Vide() && !a.m_Image.empty()) {
+        if (const auto* e = m_Depot.Trouver(a.m_Id)) {
+            s_ImageArme = a.m_Image;
+            s_TypeArme = e->m_Categorie;
+        }
+    }
+
+    const auto MethodeJson = [&, this](int i, bool p_ArmeTiree = false) -> json {
         if (i < 0) return nullptr;
         const auto& m = Methodes()[i];
-        const auto s_Image = i < static_cast<int>(m_ImagesMethodes.size()) ? m_ImagesMethodes[i] : std::string();
+        auto s_Image = i < static_cast<int>(m_ImagesMethodes.size()) ? m_ImagesMethodes[i] : std::string();
+        if (p_ArmeTiree && !s_ImageArme.empty() && *m.m_Large && s_TypeArme == m.m_Large) s_Image = s_ImageArme;
         return { { "cle", m.m_Cle }, { "libelle", Tx(std::string("methode.") + m.m_Cle) },
                  { "famille", Tx(std::string("famille.") + m.m_Famille) }, { "familleCle", m.m_Famille }, { "image", s_Image } };
     };
@@ -2013,7 +2059,7 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
             { "nom", c.m_Nom },
             { "image", c.m_Image },
             { "etat", EtatTexte(c.m_Etat) },
-            { "methode", MethodeJson(c.m_Methode) },
+            { "methode", MethodeJson(c.m_Methode, true) },
             { "tenue", c.m_Tenue >= 0 && c.m_Tenue < static_cast<int>(m_Tirage.m_Tenues.size())
                            ? TenueJson(m_Tirage.m_Tenues[c.m_Tenue]) : json(nullptr) },
             { "detail", c.m_Detail },

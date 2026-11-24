@@ -95,6 +95,7 @@ private:
     int m_NumeroTirage = 0;          // change à chaque tirage : l'interface anime
     bool m_EnMission = false;
     bool m_DemandeTirage = false;    // demandé par l'interface, fait par le thread du jeu
+    double m_DernierEssaiNiveau = -1000.0; // PreparerNiveau : un essai toutes les 5 s au plus
     std::atomic<bool> m_ContratLance = false; // ContractStart reçu, niveau pas encore quitté
     bool m_DemandeReleve = false;    // mission en cours : relever ses PNJ (même sans roulette)
     std::string m_Lieu;              // « Paris, France »

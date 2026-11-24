@@ -1,0 +1,493 @@
+/* Roulette — fiche posée sur le jeu.
+   Codes des menus de HITMAN : noir mat, tuiles plates, capitales serrées,
+   un seul rouge, l'image du jeu partout où elle existe. */
+
+:root {
+  --noir: #060607;
+  --fond: rgba(9, 9, 11, .94);
+  --carte: #131315;
+  --carte-2: #1b1b1e;
+  --carte-3: #242428;
+  --trait: rgba(255, 255, 255, .08);
+  --blanc: #f4f4f4;
+  --gris: #9b9ba3;
+  --gris-2: #5b5b62;
+  --rouge: #e10a1e;
+  --rouge-sombre: #7e0510;
+  --vert: #3fcf6a;
+  --police: "Bahnschrift", "Segoe UI", "Arial Narrow", sans-serif;
+  --courbe: cubic-bezier(.2, .8, .2, 1);
+  --rebond: cubic-bezier(.2, 1.4, .4, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  scrollbar-color: #3a3a40 transparent;
+  background: transparent;
+  color: var(--blanc);
+  font-family: var(--police);
+  font-stretch: semi-condensed;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+[hidden] { display: none !important; }
+
+#voile {
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,.5), rgba(0,0,0,.9));
+  opacity: 0; transition: opacity .3s;
+  pointer-events: none;
+}
+body.fiche-ouverte #voile { opacity: 1; }
+
+.sur {
+  font-size: 12px; font-weight: 700; letter-spacing: .28em; text-transform: uppercase;
+  color: var(--rouge);
+}
+.sur--gris { color: var(--gris); }
+
+/* ------------------------------------------------------------ Fiche */
+
+/* La fiche grandit avec l'écran (Julien : « trop petit » en 3440 × 1440) :
+   --zoom est posé par roulette.js. scale ne touche pas la mise en page, d'où
+   les dimensions divisées par le zoom. */
+#fiche {
+  position: fixed;
+  left: 50%; top: 50%;
+  translate: -50% -50%;
+  scale: var(--zoom, 1);
+  width: min(1320px, calc((100vw - 64px) / var(--zoom, 1)));
+  max-height: calc((100vh - 56px) / var(--zoom, 1));
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  background: var(--fond);
+  box-shadow: 0 40px 120px rgba(0,0,0,.7);
+  animation: fiche-entree .4s var(--courbe);
+}
+#fiche::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; z-index: 5;
+  background: var(--rouge);
+  transform-origin: left; animation: filet .6s var(--courbe);
+}
+@keyframes fiche-entree { from { opacity: 0; transform: translateY(18px) scale(.985); } }
+@keyframes filet { from { transform: scaleX(0); } }
+
+.entete, .actions, .bandeau, .rupture { flex: none; }
+
+.entete {
+  display: flex; align-items: center; gap: 32px;
+  padding: 22px 30px 18px;
+}
+.marque { display: grid; gap: 6px; }
+.marque__logo { font-size: 28px; font-weight: 700; letter-spacing: .16em; line-height: 1; }
+.marque__47 { margin-left: .32em; color: var(--rouge); font-weight: inherit; }
+.marque__filet { width: 56px; height: 4px; background: var(--rouge); }
+
+.entete__mission { display: grid; gap: 3px; padding-left: 32px; border-left: 1px solid var(--trait); min-width: 0; }
+.entete__sur { font-size: 12px; letter-spacing: .26em; color: var(--gris); text-transform: uppercase; }
+.entete__titre { font-size: 21px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.etat {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px;
+  font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+  background: var(--carte-2);
+  white-space: nowrap;
+}
+.etat::before { content: ""; width: 8px; height: 8px; background: var(--gris); }
+.etat--propose::before, .etat--en_cours::before { background: var(--blanc); animation: pulsation 1.4s infinite; }
+.etat--accepte { background: var(--rouge); }
+.etat--accepte::before { background: var(--blanc); }
+.etat--reussi { background: rgba(63,207,106,.14); color: var(--vert); }
+.etat--reussi::before { background: var(--vert); }
+.etat--echoue { background: rgba(225,10,30,.16); color: var(--rouge); }
+.etat--echoue::before { background: var(--rouge); }
+@keyframes pulsation { 50% { opacity: .2; } }
+
+.entete__fermer {
+  display: flex; align-items: center; gap: 10px;
+  height: 36px; padding: 0 12px;
+  color: var(--gris);
+  background: var(--carte-2);
+  transition: background .15s, color .15s;
+}
+.entete__fermer svg { width: 16px; height: 16px; }
+.entete__fermer:hover { background: var(--blanc); color: var(--noir); }
+
+kbd {
+  font: inherit; font-size: 11px; letter-spacing: .08em;
+  padding: 1px 5px; border: 1px solid currentColor; opacity: .75;
+}
+
+/* ------------------------------------------------------------ Accueil */
+
+.accueil {
+  position: relative; overflow: hidden;
+  height: clamp(380px, 56vh, 560px);
+  margin: 0 30px;
+  background: var(--carte);
+}
+
+/* Les destinations du joueur, en tuiles qui glissent lentement derrière. */
+.accueil__mosaique {
+  position: absolute; inset: -40px;
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
+  transform: rotate(-6deg) scale(1.15);
+  opacity: .5;
+  animation: mosaique 60s linear infinite alternate;
+}
+.accueil__mosaique div {
+  aspect-ratio: 16 / 10;
+  background: var(--carte-2) center / cover no-repeat;
+  opacity: 0; transition: opacity .8s;
+}
+.accueil__mosaique div.charge { opacity: 1; }
+@keyframes mosaique { to { transform: rotate(-6deg) scale(1.15) translateX(-12%); } }
+
+.accueil::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(9,9,11,.97) 0%, rgba(9,9,11,.85) 42%, rgba(9,9,11,.35) 100%);
+}
+.accueil__contenu {
+  position: relative; z-index: 1;
+  height: 100%;
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 16px;
+  padding: 0 64px;
+  max-width: 760px;
+}
+.accueil__contenu > * { animation: monte .6s backwards var(--courbe); }
+.accueil__contenu > :nth-child(2) { animation-delay: .07s; }
+.accueil__contenu > :nth-child(3) { animation-delay: .14s; }
+.accueil__contenu > :nth-child(4) { animation-delay: .21s; }
+@keyframes monte { from { opacity: 0; transform: translateY(16px); } }
+
+.accueil__titre { font-size: 54px; line-height: 1; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+.accueil__texte { font-size: 16px; line-height: 1.45; color: #c9c9cf; max-width: 560px; margin-bottom: 10px; }
+
+/* Les modes, choisis avant le tirage : trois cartes. Le nom et une accroche,
+   puis ce que le mode impose, une ligne par sujet, chacune avec son icône. */
+.modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; margin-bottom: 12px; }
+.mode {
+  position: relative;
+  display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+  padding: 16px 16px 15px;
+  background: linear-gradient(180deg, rgba(27, 27, 30, .92), rgba(13, 13, 15, .92));
+  border: 1px solid var(--trait);
+  color: var(--gris);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .18s, color .18s, transform .18s var(--courbe), box-shadow .18s;
+}
+.mode:hover { border-color: rgba(255, 255, 255, .22); color: #d6d6dc; transform: translateY(-2px); }
+.mode::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  background: var(--rouge); transform: scaleX(0); transform-origin: left; transition: transform .25s var(--courbe);
+}
+.mode.actif {
+  border-color: rgba(225, 10, 30, .65); color: #e4e4ea;
+  background: linear-gradient(180deg, rgba(58, 10, 16, .92), rgba(16, 9, 11, .94));
+  box-shadow: 0 10px 30px -12px rgba(225, 10, 30, .55);
+}
+.mode.actif::before { transform: scaleX(1); }
+.mode__tete { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mode__nom { font-size: 19px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--blanc); }
+.mode__defaut {
+  font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em;
+  padding: 2px 6px; border: 1px solid rgba(225, 10, 30, .7); color: #ff5363; white-space: nowrap;
+}
+.mode__accroche { font-size: 13px; font-style: italic; color: #a9a9b2; margin-top: -4px; }
+.mode.actif .mode__accroche { color: #d0c4c6; }
+.mode__lignes { display: flex; flex-direction: column; gap: 7px; list-style: none; padding-top: 10px; border-top: 1px solid var(--trait); }
+.mode__ligne { display: grid; grid-template-columns: 16px 1fr; gap: 9px; align-items: start; font-size: 12.5px; line-height: 1.3; }
+.mode__ligne svg { width: 16px; height: 16px; margin-top: 1px; color: var(--gris-2); }
+.mode.actif .mode__ligne svg { color: var(--rouge); }
+
+.bandeau__mode {
+  align-self: flex-start;
+  width: max-content;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em;
+  padding: 3px 8px; background: var(--rouge); color: var(--blanc);
+}
+.reglage-note { font-size: 13px; line-height: 1.4; color: var(--gris); }
+
+/* ------------------------------------------------------------ Contrat */
+
+.contrat { display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto; }
+
+.bandeau {
+  position: relative; overflow: hidden;
+  height: 148px;
+  margin: 0 30px;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  padding: 20px 24px;
+  background: var(--carte);
+}
+.bandeau__fond {
+  position: absolute; inset: 0;
+  background: center 35% / cover no-repeat;
+  opacity: 0; transition: opacity .5s;
+}
+.bandeau__fond.charge { opacity: 1; }
+.bandeau__fond::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(9,9,11,.96) 0%, rgba(9,9,11,.6) 50%, rgba(9,9,11,.2) 100%);
+}
+.bandeau__texte { position: relative; display: grid; gap: 4px; min-width: 0; }
+.bandeau__lieu { font-size: 40px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; line-height: 1; }
+.bandeau__mission { display: flex; align-items: baseline; gap: 12px; font-size: 18px; font-weight: 600; text-transform: uppercase; }
+.bandeau__vignette {
+  position: relative; flex: none;
+  width: 196px; height: 110px;
+  background: var(--carte-2) center / cover no-repeat;
+  box-shadow: 0 0 0 1px var(--trait);
+}
+.bandeau__vignette::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--rouge); }
+.bandeau--roule .bandeau__lieu, .bandeau--roule .bandeau__mission { filter: blur(1.4px); opacity: .7; }
+.bandeau--tombe .bandeau__texte { animation: tombe .45s var(--rebond); }
+
+.corps {
+  display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 22px;
+  padding: 18px 30px 16px;
+  min-height: 0; overflow: auto;
+  scrollbar-width: thin;
+}
+
+/* ------------------------------------------------------------ Cibles */
+
+.cibles { display: flex; gap: 16px; justify-content: safe center; min-width: 0; }
+
+.cible { flex: 0 1 236px; min-width: 196px; display: grid; gap: 8px; align-content: start; }
+.cible--entree { animation: retourne .55s backwards var(--courbe); }
+@keyframes retourne { from { opacity: 0; transform: perspective(900px) rotateY(-70deg) translateX(-20px); } }
+
+.portrait {
+  position: relative;
+  height: clamp(220px, 31vh, 300px);
+  background: var(--carte) center top / cover no-repeat;
+  overflow: hidden;
+}
+.portrait::after {
+  content: ""; position: absolute; inset: 50% 0 0;
+  background: linear-gradient(transparent, rgba(0,0,0,.94));
+}
+/* Le balayage rouge à l'arrivée d'une carte. */
+.cible--entree .portrait::before {
+  content: ""; position: absolute; z-index: 3; left: 0; right: 0; height: 2px;
+  background: var(--rouge); box-shadow: 0 0 18px 4px rgba(225,10,30,.55);
+  animation: balaye .9s .2s backwards var(--courbe);
+  top: 100%; opacity: 0;
+}
+@keyframes balaye { from { top: 0; opacity: 1; } 85% { opacity: 1; } to { top: 100%; opacity: 0; } }
+
+.portrait__sans-image { position: absolute; inset: 0; display: grid; place-items: center; color: var(--gris-2); }
+.portrait__sans-image svg { width: 96px; height: 96px; }
+.portrait__nom { position: absolute; z-index: 1; left: 14px; right: 14px; bottom: 12px; display: grid; gap: 2px; }
+.portrait__libelle { font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; line-height: 1.05; }
+
+.portrait__tampon {
+  position: absolute; z-index: 2; inset: 0;
+  display: grid; place-items: center;
+  background: rgba(0,0,0,.5);
+  animation: tampon .3s var(--rebond);
+}
+.portrait__tampon span {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px;
+  font-size: 19px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
+  border: 3px solid currentColor; rotate: -8deg;
+}
+.portrait__tampon svg { width: 22px; height: 22px; }
+.portrait__tampon--reussi { color: var(--vert); }
+.portrait__tampon--echoue { color: var(--rouge); }
+@keyframes tampon { from { opacity: 0; transform: scale(1.5); } }
+
+.cible--roulette .portrait { box-shadow: inset 0 0 0 2px var(--rouge); }
+
+/* Méthode et tenue, comme sur le briefing du jeu : une image, un libellé. */
+.tuiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tuile {
+  position: relative;
+  height: clamp(104px, 13vh, 128px);
+  background: var(--carte);
+  overflow: hidden;
+  display: grid; grid-template-rows: 1fr auto;
+}
+.tuile__visuel {
+  display: grid; place-items: center;
+  background: var(--carte-2) center / cover no-repeat;
+}
+.tuile__visuel svg { width: 38px; height: 38px; opacity: .9; }
+.tuile--image .tuile__visuel::after {
+  content: ""; position: absolute; inset: 35% 0 0;
+  background: linear-gradient(transparent, rgba(0,0,0,.92));
+}
+.tuile__texte { position: relative; z-index: 1; padding: 6px 9px 8px; display: grid; gap: 1px; background: var(--carte); }
+.tuile--image .tuile__texte { position: absolute; left: 0; right: 0; bottom: 0; background: none; }
+.tuile__titre { font-size: 10px; letter-spacing: .22em; color: var(--gris); text-transform: uppercase; }
+.tuile__valeur { font-size: 14px; font-weight: 600; line-height: 1.12; text-transform: uppercase; }
+.tuile__famille { font-size: 11px; color: var(--gris); }
+.cible__detail { font-size: 13px; color: var(--rouge); line-height: 1.3; }
+
+.tuile--roule .tuile__valeur, .tuile--roule .tuile__visuel { filter: blur(1.4px); opacity: .6; }
+.tuile--tombe { animation: tombe .38s var(--rebond); }
+@keyframes tombe { from { transform: scale(1.07); box-shadow: 0 0 0 2px var(--rouge); } }
+
+/* ------------------------------------------------------------ Colonne */
+
+.colonne { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.intertitre {
+  font-size: 12px; font-weight: 700; letter-spacing: .28em; color: var(--gris);
+  text-transform: uppercase; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.intertitre::after { content: ""; flex: 1; height: 1px; background: var(--trait); }
+
+.complications { display: grid; gap: 8px; }
+.complications:empty::before { content: "Aucune"; color: var(--gris-2); font-size: 14px; }
+.complication {
+  position: relative;
+  display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 12px;
+  padding-right: 12px;
+  background: var(--carte);
+  overflow: hidden;
+}
+.complication--entree { animation: glisse .45s backwards var(--courbe); }
+@keyframes glisse { from { opacity: 0; transform: translateX(24px); } }
+.complication__image {
+  height: 56px; display: grid; place-items: center;
+  background: var(--carte-2) center / cover no-repeat;
+}
+.complication__image svg { width: 22px; height: 22px; }
+.complication__titre { font-size: 14px; font-weight: 700; text-transform: uppercase; line-height: 1.1; }
+.complication__detail { font-size: 12px; color: var(--gris); margin-top: 2px; }
+.complication__etat svg { width: 20px; height: 20px; }
+.complication::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--rouge); z-index: 1; }
+.complication--reussi::before { background: var(--vert); }
+.complication--reussi .complication__etat { color: var(--vert); }
+.complication--echoue .complication__etat { color: var(--rouge); }
+.complication--echoue .complication__titre { text-decoration: line-through; text-decoration-color: var(--rouge); }
+
+.preparation { display: grid; gap: 8px; }
+.prep {
+  position: relative;
+  display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 12px;
+  height: 58px; padding-right: 10px;
+  background: var(--carte);
+  overflow: hidden;
+}
+.prep--entree { animation: glisse .45s backwards var(--courbe); }
+.prep__image { height: 100%; display: grid; place-items: center; background: var(--carte-2) center / cover no-repeat; }
+.prep__image svg { width: 22px; height: 22px; opacity: .8; }
+.prep__titre { font-size: 10px; letter-spacing: .22em; color: var(--gris); text-transform: uppercase; }
+.prep__valeur { font-size: 14px; font-weight: 600; text-transform: uppercase; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prep--echoue { box-shadow: inset 0 0 0 2px var(--rouge); }
+.prep--echoue .prep__valeur { text-decoration: line-through; text-decoration-color: var(--rouge); }
+.prep--reussi { box-shadow: inset 0 0 0 2px var(--vert); }
+
+/* ------------------------------------------------------------ Guide */
+
+
+/* ------------------------------------------------------------ Actions */
+
+.actions {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 30px;
+  border-top: 1px solid var(--trait);
+  background: rgba(0,0,0,.3);
+}
+.actions__aide { color: var(--gris); font-size: 14px; line-height: 1.35; flex: 1; }
+
+.bouton {
+  position: relative; overflow: hidden;
+  display: inline-flex; align-items: center; gap: 10px;
+  height: 46px; padding: 0 20px;
+  font-size: 15px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  background: var(--carte-2);
+  transition: background .15s, color .15s, transform .1s;
+  white-space: nowrap;
+}
+.bouton svg { width: 18px; height: 18px; }
+.bouton:hover:not(:disabled) { background: var(--blanc); color: var(--noir); }
+.bouton:active:not(:disabled) { transform: scale(.97); }
+.bouton:disabled { opacity: .35; cursor: default; }
+.bouton--principal { background: var(--rouge); }
+.bouton--principal:hover:not(:disabled) { background: var(--blanc); color: var(--rouge); }
+.bouton--principal::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+  animation: reflet 3.2s 1s infinite;
+}
+@keyframes reflet { 30%, 100% { left: 130%; } }
+.bouton--discret { background: transparent; color: var(--gris); }
+.bouton--grand { height: 60px; padding: 0 34px; font-size: 18px; }
+.bouton--grand svg { width: 24px; height: 24px; }
+
+/* ------------------------------------------------------------ Réglages */
+
+.reglages {
+  position: absolute; inset: 4px 0 0 auto;
+  width: 420px;
+  padding: 26px 28px;
+  background: #0c0c0e;
+  border-left: 1px solid var(--trait);
+  box-shadow: -60px 0 80px rgba(0,0,0,.7);
+  z-index: 6;
+  display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto;
+  animation: tiroir .25s var(--courbe);
+}
+@keyframes tiroir { from { transform: translateX(40px); opacity: 0; } }
+.reglages .bouton { margin-top: auto; justify-content: center; flex: none; }
+
+.interrupteur { display: flex; align-items: center; gap: 14px; font-size: 15px; cursor: pointer; }
+.interrupteur input { display: none; }
+.interrupteur span {
+  flex: none; width: 40px; height: 22px; position: relative;
+  background: var(--carte-2); border: 1px solid var(--trait);
+  transition: background .15s;
+}
+.interrupteur span::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; background: var(--gris);
+  transition: transform .15s, background .15s;
+}
+.interrupteur input:checked + span { background: var(--rouge); }
+.interrupteur input:checked + span::after { transform: translateX(18px); background: var(--blanc); }
+
+.reglage-ligne { display: flex; align-items: center; justify-content: space-between; font-size: 15px; }
+.reglage-ligne--colonne { flex-direction: column; align-items: stretch; gap: 10px; }
+.segments { display: flex; }
+.segments button { width: 38px; height: 32px; font-weight: 700; background: var(--carte-2); border-right: 1px solid var(--noir); }
+.segments button.actif { background: var(--rouge); }
+.puces { display: flex; flex-wrap: wrap; gap: 6px; }
+.puces button {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 11px; font-size: 13px;
+  background: var(--carte-2); border: 1px solid transparent; color: var(--gris);
+}
+.puces button svg { width: 15px; height: 15px; }
+.puces button.actif { border-color: var(--rouge); color: var(--blanc); }
+
+/* ------------------------------------------------------------ Contrat rompu */
+
+.rupture {
+  margin: 0 30px 14px;
+  padding: 16px 20px;
+  background: linear-gradient(90deg, rgba(225,10,30,.3), rgba(225,10,30,.06));
+  border-left: 5px solid var(--rouge);
+  display: grid; gap: 4px;
+  animation: tampon .35s var(--rebond);
+}
+.rupture__titre { font-size: 26px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--rouge); }
+.rupture__raison { font-size: 17px; font-weight: 600; }
+.rupture__consigne { font-size: 13px; color: var(--gris); }
+
+
+.interrupteur .txt { font-weight: inherit; }

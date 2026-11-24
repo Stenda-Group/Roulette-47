@@ -1,0 +1,9 @@
+build/
+sdk/
+cache/
+*.user
+archive_v02/
+NOTES.fr.md
+dist/
+__pycache__/
+essais_pages/

@@ -1,0 +1,79 @@
+{
+ "base": "https://cache.roulette.mod/",
+ "images": 0,
+ "tirage": 1,
+ "mission": {
+  "lieu": "Paris, France",
+  "titre": "Le Grand Spectacle"
+ },
+ "etat": "en_cours",
+ "relancePossible": true,
+ "cibles": [
+  {
+   "nom": "Viktor Novikov",
+   "image": "images/actors/showstopper_viktor_novikov.jpg",
+   "etat": "en_cours",
+   "methode": {
+    "libelle": "Fusil de précision",
+    "famille": "Armes à feu"
+   },
+   "tenue": {
+    "nom": "Costume de 47",
+    "image": "",
+    "costume": true
+   },
+   "detail": ""
+  },
+  {
+   "nom": "Dalia Margolis",
+   "image": "images/actors/showstopper_dahlia_margolis.jpg",
+   "etat": "en_cours",
+   "methode": {
+    "libelle": "Corde de piano",
+    "famille": "Corps à corps"
+   },
+   "tenue": {
+    "nom": "Vampire Magician",
+    "image": "images/unlockables/outfit_1fdc259e-b96a-47f2-bbd8-e86e78d6df70_0.jpg",
+    "costume": false
+   },
+   "detail": ""
+  }
+ ],
+ "complications": [
+  {
+   "cle": "aucune_victime",
+   "titre": "Aucune victime collatérale",
+   "detail": "Seules les cibles meurent.",
+   "etat": "en_cours"
+  }
+ ],
+ "familles": [
+  "Accidents",
+  "Poisons",
+  "Armes à feu",
+  "Explosifs",
+  "Corps à corps",
+  "Au choix"
+ ],
+ "reglages": {
+  "imposerMethode": true,
+  "imposerTenue": true,
+  "costume": true,
+  "tirageAuto": true,
+  "encart": true,
+  "complications": 1,
+  "familles": [
+   true,
+   true,
+   true,
+   true,
+   true,
+   true
+  ]
+ },
+ "catalogue": {
+  "methodes": [],
+  "tenues": []
+ }
+}

@@ -1,0 +1,85 @@
+Roulette 47 — Source-Available License
+Copyright (c) 2026 Stenda Group. All rights reserved.
+
+This repository contains the source code, interface files, artwork and
+documentation of "Roulette 47" (the "Software"). The Software is NOT open
+source. It is made available so that people can read it, use it and help
+improve it, under the terms below. Anything these terms do not expressly allow
+is reserved to the copyright holder (the "Owner").
+
+1. WHAT YOU MAY DO
+
+   a) Read the source code and study how the Software works.
+
+   b) Download the official releases published in this repository and use
+      them, unmodified, to play HITMAN: World of Assassination on your own
+      computer, for personal and non-commercial purposes.
+
+   c) Build the Software from source and modify it on your own computer, for
+      your personal use or to prepare a contribution to this repository.
+
+   d) Fork this repository on GitHub, as permitted by GitHub's Terms of
+      Service, for the sole purpose of proposing changes back to it through
+      pull requests.
+
+   e) Show the Software in videos, streams, screenshots and articles.
+
+2. WHAT YOU MAY NOT DO without the Owner's prior written permission
+
+   a) Copy, publish, share, re-upload or otherwise distribute the Software,
+      in source or binary form, modified or not — including on mod websites,
+      file-sharing services and in mod packs. Link to this repository instead.
+
+   b) Distribute or publish a modified version of the Software, or any work
+      derived from it.
+
+   c) Reuse any part of the Software (code, interface, artwork, texts, logo)
+      in another project, whether or not that project is related to HITMAN.
+
+   d) Sell, rent, license or otherwise use the Software for any commercial
+      purpose, including putting it behind a paywall.
+
+   e) Remove or alter this license, the copyright notices or the credits.
+
+3. CONTRIBUTIONS
+
+   By submitting a contribution (a pull request, a patch, an issue containing
+   code or any other material) you confirm that you wrote it or otherwise have
+   the right to submit it, and you grant the Owner a perpetual, worldwide,
+   non-exclusive, royalty-free and irrevocable license to use, copy, modify,
+   publish, distribute, sublicense and relicense your contribution, as part of
+   the Software or separately, under any terms the Owner chooses. You will be
+   credited for accepted contributions. Contributions are voluntary and do not
+   entitle you to any payment.
+
+4. THIRD-PARTY COMPONENTS
+
+   The Software uses third-party components that remain under their own
+   licenses, listed in THIRD-PARTY-NOTICES.md. Nothing in this license
+   restricts the rights those licenses grant you over those components.
+
+5. GAME CONTENT AND TRADEMARKS
+
+   The Software contains no content from HITMAN. Names and images shown by the
+   Software are read at run time from the game installed on your computer and
+   from the game's own servers. HITMAN, Agent 47 and related names are
+   trademarks of IO Interactive A/S. The Software is an unofficial fan project,
+   not affiliated with or endorsed by IO Interactive.
+
+6. TERMINATION
+
+   Your rights under this license end automatically if you break any of its
+   terms. You must then stop using the Software and delete every copy you
+   hold.
+
+7. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+   IN CONNECTION WITH THE SOFTWARE OR THE USE OF OR OTHER DEALINGS IN THE
+   SOFTWARE. MODIFYING A GAME IS DONE AT YOUR OWN RISK.
+
+For any permission not granted above, open an issue in this repository.

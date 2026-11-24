@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" width="1280" height="420" role="img" aria-label="Roulette 47">
+  <title>Roulette 47</title>
+  <style>
+    .glyph { fill: none; stroke-width: 22; stroke-linecap: butt; stroke-linejoin: miter;
+             stroke-dasharray: 520; stroke-dashoffset: 520; animation: draw 1.1s cubic-bezier(.6,.05,.25,1) forwards; }
+    .glyph47 { filter: url(#glow); }
+    .bar { fill: #8a8a92; opacity: 0; animation: bar .25s ease-out forwards; }
+    .sweep { transform-box: fill-box; transform-origin: left; transform: scaleX(0); animation: sweep 1.4s 1.5s cubic-bezier(.2,.8,.2,1) forwards; }
+    .tag { opacity: 0; animation: up .8s 2.1s cubic-bezier(.2,.8,.2,1) forwards; }
+    .tag2 { opacity: 0; animation: up .8s 2.35s cubic-bezier(.2,.8,.2,1) forwards; }
+    .scan { animation: scan 6s 3s ease-in-out infinite; opacity: 0; }
+    .reticle { transform-origin: 1150px 66px; animation: spin 14s linear infinite, fade 1s 2.4s forwards; opacity: 0; }
+    .grid { opacity: .07; }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    @keyframes bar { to { opacity: .85; } }
+    @keyframes sweep { to { transform: scaleX(1); } }
+    @keyframes up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fade { to { opacity: .55; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes scan { 0% { opacity: 0; transform: translateX(-260px); } 15% { opacity: .9; } 45% { opacity: 0; transform: translateX(1280px); } 100% { opacity: 0; transform: translateX(1280px); } }
+  </style>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#2a0a0e"/>
+      <stop offset=".45" stop-color="#110b0c"/>
+      <stop offset="1" stop-color="#070708"/>
+    </radialGradient>
+    <linearGradient id="scanGrad" x1="0" x2="1">
+      <stop offset="0" stop-color="#e10a1e" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#e10a1e" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#e10a1e" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="lines" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(32)">
+      <rect width="1" height="28" fill="#ffffff"/>
+    </pattern>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="420" fill="url(#bg)"/>
+  <rect class="grid" width="1280" height="420" fill="url(#lines)"/>
+  <rect x="0" y="0" width="1280" height="6" fill="#e10a1e"/>
+
+  <!-- 47's barcode -->
+  <g transform="translate(64 52)">
+    <rect class="bar" x="0" y="0" width="9" height="46" style="animation-delay:0.15s"/>
+    <rect class="bar" x="12" y="0" width="6" height="46" style="animation-delay:0.21s"/>
+    <rect class="bar" x="21" y="0" width="3" height="46" style="animation-delay:0.27s"/>
+    <rect class="bar" x="33" y="0" width="3" height="46" style="animation-delay:0.33s"/>
+    <rect class="bar" x="42" y="0" width="6" height="46" style="animation-delay:0.39s"/>
+    <rect class="bar" x="51" y="0" width="9" height="46" style="animation-delay:0.45s"/>
+    <rect class="bar" x="63" y="0" width="3" height="46" style="animation-delay:0.51s"/>
+    <rect class="bar" x="72" y="0" width="3" height="46" style="animation-delay:0.57s"/>
+    <rect class="bar" x="84" y="0" width="6" height="46" style="animation-delay:0.63s"/>
+    <rect class="bar" x="93" y="0" width="3" height="46" style="animation-delay:0.69s"/>
+    <rect class="bar" x="102" y="0" width="9" height="46" style="animation-delay:0.75s"/>
+    <rect class="bar" x="114" y="0" width="6" height="46" style="animation-delay:0.81s"/>
+    <rect class="bar" x="123" y="0" width="3" height="46" style="animation-delay:0.87s"/>
+    <rect class="bar" x="135" y="0" width="3" height="46" style="animation-delay:0.93s"/>
+    <rect class="bar" x="141" y="0" width="6" height="46" style="animation-delay:0.99s"/>
+  </g>
+
+  <!-- Reticle -->
+  <g class="reticle" fill="none" stroke="#e10a1e" stroke-width="2.5">
+    <circle cx="1150" cy="66" r="26"/>
+    <circle cx="1150" cy="66" r="6" fill="#e10a1e" stroke="none"/>
+    <path d="M1150 30 V48 M1150 84 V102 M1114 66 H1132 M1168 66 H1186"/>
+  </g>
+
+  <!-- ROULETTE 47 -->
+  <g transform="translate(123.2 128) scale(0.95)">
+    <path class="glyph" d="M11,109 V11 H57 Q71,11 71,25 V45 Q71,59 57,59 H11 M42,59 L75,109" transform="translate(0 0)" stroke="#f4f4f4" style="animation-delay:0.35s"/>
+    <path class="glyph" d="M25,11 H65 Q79,11 79,25 V95 Q79,109 65,109 H25 Q11,109 11,95 V25 Q11,11 25,11 Z" transform="translate(112 0)" stroke="#f4f4f4" style="animation-delay:0.46s"/>
+    <path class="glyph" d="M11,0 V95 Q11,109 25,109 H63 Q77,109 77,95 V0" transform="translate(232 0)" stroke="#f4f4f4" style="animation-delay:0.57s"/>
+    <path class="glyph" d="M11,0 V109 H70" transform="translate(350 0)" stroke="#f4f4f4" style="animation-delay:0.68s"/>
+    <path class="glyph" d="M74,11 H11 V109 H74 M11,60 H60" transform="translate(450 0)" stroke="#f4f4f4" style="animation-delay:0.79s"/>
+    <path class="glyph" d="M0,11 H84 M42,11 V120" transform="translate(554 0)" stroke="#f4f4f4" style="animation-delay:0.90s"/>
+    <path class="glyph" d="M0,11 H84 M42,11 V120" transform="translate(668 0)" stroke="#f4f4f4" style="animation-delay:1.01s"/>
+    <path class="glyph" d="M74,11 H11 V109 H74 M11,60 H60" transform="translate(782 0)" stroke="#f4f4f4" style="animation-delay:1.12s"/>
+    <path class="glyph glyph47" d="M54,120 V11 L8,80 H76" transform="translate(912 0)" stroke="#e10a1e" style="animation-delay:1.33s"/>
+    <path class="glyph glyph47" d="M0,11 H66 L28,120" transform="translate(1018 0)" stroke="#e10a1e" style="animation-delay:1.47s"/>
+  </g>
+
+  <!-- Red rule -->
+  <rect class="sweep" x="123.2" y="278" width="1033.6" height="5" fill="#e10a1e"/>
+
+  <text class="tag" x="640.0" y="333" text-anchor="middle" fill="#d9d9de"
+        font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="26" font-weight="600" letter-spacing="7">CONTRACT ROULETTE FOR HITMAN: WORLD OF ASSASSINATION</text>
+  <text class="tag2" x="640.0" y="373" text-anchor="middle" fill="#8f8f98"
+        font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="19" letter-spacing="3">Destination · Targets · Methods · Outfits · Complications · Loadout — drawn in one spin</text>
+
+  <rect class="scan" x="0" y="0" width="260" height="420" fill="url(#scanGrad)"/>
+</svg>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 300" width="1280" height="300" role="img" aria-label="Roulette 47 modes">
+  <title>Roulette 47 — modes</title>
+  <style>
+    text { font-family: Segoe UI, Helvetica Neue, Arial, sans-serif; }
+    .name { fill: #f4f4f4; font-size: 30px; font-weight: 700; letter-spacing: 4px; }
+    .hook { fill: #a9a9b2; font-size: 17px; font-style: italic; }
+    .line { fill: #d0d0d6; font-size: 16px; }
+    .tagtxt { fill: #ff5363; font-size: 12px; font-weight: 700; letter-spacing: 2px; }
+    .card { opacity: 0; animation: in .7s cubic-bezier(.2,.8,.2,1) forwards; }
+    .topbar { transform-box: fill-box; transform-origin: left; transform: scaleX(0); animation: bar 1s 1s cubic-bezier(.2,.8,.2,1) forwards; }
+    .topbar.off { opacity: 0; }
+    @keyframes in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes bar { to { transform: scaleX(1); } }
+  </style>
+  <defs>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b1b1e"/><stop offset="1" stop-color="#0d0d0f"/>
+    </linearGradient>
+    <linearGradient id="cardActive" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a0a10"/><stop offset="1" stop-color="#100909"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="300" fill="#08080a"/>
+  
+  <g class="card" style="animation-delay:0.15s">
+    <rect x="32.0" y="24" width="389.3" height="252" fill="url(#cardActive)" stroke="#e10a1e" stroke-width="1.5"/>
+    <rect x="32.0" y="24" width="389.3" height="4" fill="#e10a1e" class="topbar"/>
+    <text x="56.0" y="72" class="name">ASSASSIN</text>
+    <rect x="303.3333333333333" y="38" width="94" height="24" fill="none" stroke="#e10a1e" stroke-width="1.5"/><text x="350.3333333333333" y="55" class="tagtxt" text-anchor="middle">DEFAULT</text>
+    <text x="56.0" y="104" class="hook">The classic hitman.</text>
+    <rect x="56.0" y="122" width="341.3" height="1" fill="#2c2c31"/>
+    <rect x="56.0" y="139" width="8" height="8" fill="#e10a1e" transform="rotate(45 60.0 143)"/><text x="76.0" y="148" class="line">Agent 47's suit, suited start</text><rect x="56.0" y="169" width="8" height="8" fill="#e10a1e" transform="rotate(45 60.0 173)"/><text x="76.0" y="178" class="line">Silenced Silverballer · fiber wire · lockpick</text><rect x="56.0" y="199" width="8" height="8" fill="#e10a1e" transform="rotate(45 60.0 203)"/><text x="76.0" y="208" class="line">Pistol, fiber wire, accident or poison</text><rect x="56.0" y="229" width="8" height="8" fill="#e10a1e" transform="rotate(45 60.0 233)"/><text x="76.0" y="238" class="line">Realistic complications</text>
+  </g>
+  <g class="card" style="animation-delay:0.40s">
+    <rect x="445.3333333333333" y="24" width="389.3" height="252" fill="url(#card)" stroke="#2c2c31" stroke-width="1.5"/>
+    <rect x="445.3333333333333" y="24" width="389.3" height="4" fill="#e10a1e" class="topbar off"/>
+    <text x="469.3333333333333" y="72" class="name">PURIST</text>
+    
+    <text x="469.3333333333333" y="104" class="hook">Silent Assassin, Suit Only.</text>
+    <rect x="469.3333333333333" y="122" width="341.3" height="1" fill="#2c2c31"/>
+    <rect x="469.3333333333333" y="139" width="8" height="8" fill="#5b5b62" transform="rotate(45 473.3333333333333 143)"/><text x="489.3333333333333" y="148" class="line">Agent 47's suit, no other outfit</text><rect x="469.3333333333333" y="169" width="8" height="8" fill="#5b5b62" transform="rotate(45 473.3333333333333 173)"/><text x="489.3333333333333" y="178" class="line">No gun: fiber wire and coins</text><rect x="469.3333333333333" y="199" width="8" height="8" fill="#5b5b62" transform="rotate(45 473.3333333333333 203)"/><text x="489.3333333333333" y="208" class="line">Accidents, poison or fiber wire</text><rect x="469.3333333333333" y="229" width="8" height="8" fill="#5b5b62" transform="rotate(45 473.3333333333333 233)"/><text x="489.3333333333333" y="238" class="line">Unseen · no bodies · no victims · no cameras</text>
+  </g>
+  <g class="card" style="animation-delay:0.65s">
+    <rect x="858.6666666666666" y="24" width="389.3" height="252" fill="url(#card)" stroke="#2c2c31" stroke-width="1.5"/>
+    <rect x="858.6666666666666" y="24" width="389.3" height="4" fill="#e10a1e" class="topbar off"/>
+    <text x="882.6666666666666" y="72" class="name">FREESTYLE</text>
+    
+    <text x="882.6666666666666" y="104" class="hook">Anything goes.</text>
+    <rect x="882.6666666666666" y="122" width="341.3" height="1" fill="#2c2c31"/>
+    <rect x="882.6666666666666" y="139" width="8" height="8" fill="#5b5b62" transform="rotate(45 886.6666666666666 143)"/><text x="902.6666666666666" y="148" class="line">Random methods and outfits</text><rect x="882.6666666666666" y="169" width="8" height="8" fill="#5b5b62" transform="rotate(45 886.6666666666666 173)"/><text x="902.6666666666666" y="178" class="line">Random starting location and gear</text><rect x="882.6666666666666" y="199" width="8" height="8" fill="#5b5b62" transform="rotate(45 886.6666666666666 203)"/><text x="902.6666666666666" y="208" class="line">Driven by your settings</text>
+  </g>
+</svg>

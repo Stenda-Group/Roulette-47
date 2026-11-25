@@ -24,6 +24,7 @@
 #include <nlohmann/json.hpp>
 
 #include "Depot.h"
+#include "Discord.h"
 #include "Fenetre.h"
 #include "Images.h"
 #include "Menus.h"
@@ -80,6 +81,33 @@ private:
     void ApprendreNoms();   // sous verrou : traduit tout ce qui peut l'être, retient, renomme
     void ChargerNoms();
     void EnregistrerNoms();
+
+    // Code de contrat à partager (CodeContrat.h). Sous verrou.
+    std::string CodeDuContrat() const;          // "" sans contrat proposé ou accepté
+    bool ImporterContrat(const std::string& p_Code); // le contrat du code devient le contrat proposé
+    std::string m_ErreurCode;                   // pourquoi le dernier code a été refusé ("" sinon)
+    std::string m_AvertissementCode;            // ce qui manquait au joueur (entrée, objet non débloqués)
+    void PreparerPlanification();               // m_Planif et m_CiblesPlanif de la destination tirée
+    void CompleterImposes(SPreparation& p_Preparation); // images et noms lisibles de l'entrée et de l'équipement
+
+    // Puriste « sans filet » : contrats réussis d'affilée (roulette47.ini,
+    // « serie_puriste »). Un échec ou un abandon la remet à zéro.
+    int m_SeriePuriste = 0;
+
+    // Discord Rich Presence (Discord.h) : réglage « discord » (défaut : oui) et
+    // identifiant de l'application Discord, « discord_app » (texte).
+    Discord m_Discord;
+    bool m_DiscordActif = true;
+    std::string m_IdDiscord;
+    std::string m_PhasePresence;     // ce qui fait repartir le chronomètre
+    long long m_DebutPresence = 0;
+    double m_DernierePresence = 0.0;
+    SPresence PresenceActuelle();    // sous verrou
+    // Les destinations décochées dans les réglages (roulette47.ini,
+    // « destinations_exclues », identifiants séparés par des virgules).
+    std::set<std::string> m_DestinationsExclues;
+    // Clôt le tirage en cours (fin de contrat ou départ du niveau) et compte la série.
+    void TerminerTirage();
 
     // Entrées où 47 est repéré dès le départ (entrees_reperees.json) : la
     // complication « Ne pas être repéré » n'y est plus jamais tirée.

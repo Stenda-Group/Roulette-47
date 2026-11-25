@@ -44,6 +44,7 @@ const roulette = (() => {
     document.querySelectorAll('[data-t-html]').forEach((n) => { n.innerHTML = t(n.dataset.tHtml); });
     document.querySelectorAll('[data-t-title]').forEach((n) => { n.title = t(n.dataset.tTitle); });
     document.querySelectorAll('[data-t-aria]').forEach((n) => { n.setAttribute('aria-label', t(n.dataset.tAria)); });
+    document.querySelectorAll('[data-t-placeholder]').forEach((n) => { n.placeholder = t(n.dataset.tPlaceholder); });
   }
 
   let etat = null;
@@ -221,7 +222,7 @@ const roulette = (() => {
   // par sujet (tenue, équipement, méthodes, exigences).
   const MODES = [
     { cle: 'assassin', defaut: true, lignes: [['i-costume', 1], ['i-Armes', 2], ['i-Accidents', 3], ['i-oeil', 4]] },
-    { cle: 'puriste', lignes: [['i-costume', 1], ['i-sac', 2], ['i-Poisons', 3], ['i-oeil', 4]] },
+    { cle: 'puriste', lignes: [['i-costume', 1], ['i-sac', 2], ['i-Poisons', 3], ['i-oeil', 4], ['i-ko', 5]] },
     { cle: 'freestyle', lignes: [['i-de', 1], ['i-porte', 2], ['i-reglages', 3]] },
   ];
   const nomMode = (cle) => t('mode_' + ((MODES.find((m) => m.cle === cle) || MODES[0]).cle));
@@ -244,6 +245,10 @@ const roulette = (() => {
         lignes.append(li);
       });
       b.append(tete, el('span', 'mode__accroche', t('mode_' + m.cle + '_accroche')), lignes);
+      // Puriste « sans filet » : la série de contrats réussis d'affilée.
+      if (m.cle === 'puriste' && etat.reglages && etat.reglages.seriePuriste != null) {
+        tete.append(el('span', 'mode__serie', t('serie_puriste') + etat.reglages.seriePuriste));
+      }
       b.onclick = () => {
         if (m.cle === actif) return;
         son.clic();
@@ -520,6 +525,12 @@ const roulette = (() => {
     $('btn-refuser').hidden = !(horsMission && (e === 'propose' || e === 'accepte'));
     $('btn-refuser-texte').textContent = e === 'accepte' ? t('abandonner') : t('refuser');
     $('btn-relancer').hidden = !avecContrat || !etat.relancePossible;
+    $('btn-code').hidden = !(horsMission && etat.codeContrat);
+    // Code reçu : refusé, ou importé avec des éléments non débloqués.
+    const message = etat.erreurCode || etat.avertissementCode || '';
+    $('code-message').hidden = !message;
+    $('code-message').textContent = message;
+    $('code-message').classList.toggle('code__message--erreur', !!etat.erreurCode);
 
     $('aide').textContent =
       e === 'accepte' ? (etat.pilote ? t('aide_pilote') + etat.pilote
@@ -557,6 +568,15 @@ const roulette = (() => {
     segments('nb-complications', 'complications', 0, 3);
     segments('nb-cibles-min', 'ciblesMin', 1, 3);
     segments('nb-cibles-max', 'ciblesMax', 1, 3);
+
+    // Les destinations que le tirage peut proposer (toutes cochées par défaut).
+    const lieux = $('destinations-reglage');
+    lieux.replaceChildren();
+    (etat.destinations || []).forEach((d) => {
+      const b = el('button', d.active ? 'actif' : '', d.nom);
+      b.onclick = () => envoyer({ action: 'reglage', cle: 'destination', id: d.id, valeur: !d.active });
+      lieux.append(b);
+    });
 
     const puces = $('familles');
     puces.replaceChildren();
@@ -626,6 +646,34 @@ const roulette = (() => {
   };
   $('btn-refuser').onclick = () => { son.refus(); envoyer({ action: 'refuser' }); };
   $('btn-relancer').onclick = () => { son.clic(); envoyer({ action: 'relancer' }); };
+
+  // Code de contrat : copié dans le presse-papiers, ou collé puis chargé.
+  $('btn-code').onclick = async () => {
+    if (!etat || !etat.codeContrat) return;
+    son.clic();
+    let ok = false;
+    try { await navigator.clipboard.writeText(etat.codeContrat); ok = true; } catch (e) { /* repli plus bas */ }
+    if (!ok) {
+      const zone = el('textarea');
+      zone.value = etat.codeContrat;
+      document.body.append(zone);
+      zone.select();
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      zone.remove();
+    }
+    const texte = $('btn-code-texte');
+    texte.textContent = ok ? t('code_copie') : t('code_echec_copie');
+    setTimeout(() => { texte.textContent = t('code_copier'); }, 1800);
+  };
+  const chargerCode = () => {
+    const code = $('champ-code').value.trim();
+    if (!code) return;
+    son.clic();
+    envoyer({ action: 'importer', code });
+    $('champ-code').value = '';
+  };
+  $('form-code').onsubmit = (e) => { e.preventDefault(); chargerCode(); };
+  $('btn-charger').onclick = chargerCode;
   $('btn-fermer').onclick = () => envoyer({ action: 'fermer' });
   $('btn-reglages').onclick = () => { $('reglages').hidden = false; };
   $('btn-retour').onclick = () => { $('reglages').hidden = true; };

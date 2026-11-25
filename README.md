@@ -29,6 +29,10 @@ randomised contract — the way the community has played *Hitman roulette* for y
 - 🧾 **Written into the real contract.** The roulette objectives replace the mission's objectives; the game tracks
   them like its own, shows them on the briefing and the loading screen, and **fails the mission the vanilla way**
   at the first deviation.
+- 🔗 **Share a contract** — every contract has a code: send it to a friend, they paste it and get the very same
+  contract. Nothing is stored anywhere, the code *is* the contract.
+- 🎚️ **Always Professional.** Every roulette contract is played on Professional difficulty, locked on the planning
+  screen.
 - 🌐 **Played online**, on the official servers. No Peacock, no Simple Mod Framework, no game file modified.
 - 🗣️ **In your language** — French, English, Italian, Spanish and Russian, detected from the game itself.
 
@@ -40,11 +44,20 @@ randomised contract — the way the community has played *Hitman roulette* for y
 
 | Mode | Outfit | Loadout | Kill methods | Complications |
 |---|---|---|---|---|
-| **Assassin** *(default)* | Agent 47's suit, from a suited start | Silenced Silverballer (variant drawn from the ones you own), fiber wire, your best lockpick | Pistol, fiber wire, accident, poison found on site | Realistic only: unseen, no bodies, no collateral, no cameras, no disguise change, headshots when a pistol is required |
-| **Purist** | Suit only | No gun — fiber wire and coins | Precise accidents (drowning, fall, electrocution, falling object, burn, explosion), poison or fiber wire | Always the five Silent Assassin, Suit Only requirements |
+| **Assassin** *(default)* | Agent 47's suit, from a suited start | Silenced Silverballer (variant drawn from the ones you own), fiber wire, your best lockpick | Pistol, fiber wire, accident, poison found on site | Realistic only: unseen, no bodies, no collateral, no cameras, no disguise change, headshots when a pistol is required, kill order |
+| **Purist** | Suit only | No gun — fiber wire and coins | Precise accidents (drowning, fall, electrocution, falling object, burn, explosion), poison or fiber wire | Always the five Silent Assassin, Suit Only requirements — and **no safety net**: no saving, no loading, one attempt per contract |
 | **Freestyle** | Anything | Anything you own | Every method family you enable | Drawn at random, 0 to 3 |
 
-All modes draw **three targets at most**.
+All modes draw **three targets at most**, and every contract is played on **Professional** difficulty.
+
+- **Kill order enforced** — a complication (Assassin, Freestyle): the targets must die in the order shown on the
+  sheet; killing one out of turn fails the contract.
+- **No safety net** (Purist) — saving is disabled for the whole mission, like an elusive target. The Purist card
+  keeps your **streak** of contracts completed in a row; a failure or an abandon sets it back to zero.
+- **Fair starts** — if the drawn starting location puts 47 in plain sight, *Don't get spotted* is dropped instead
+  of failing you in the first seconds, and is never drawn again with that starting location.
+- **Freestyle disguises** — when a target must be killed in a given disguise and one of your starting locations
+  puts 47 in it, the roulette starts you there.
 
 ## How a contract plays
 
@@ -52,7 +65,7 @@ All modes draw **three targets at most**.
    F9 ─► choose a mode ─► DRAW A CONTRACT ─► the roulette spins
                                               │
                ┌──────────────────────────────┼──────────────────────┐
-           Decline                         Reroll                  Accept
+           Decline                         Reroll                  Accept   (or Copy code to share it)
         (nothing changes)            (spin once more)                │
                                                                      ▼
                                     planning screen opens, loadout locked ─► Play
@@ -94,6 +107,21 @@ All modes draw **three targets at most**.
 The first time you play a level, the mod records the NPCs present in it; from then on they can be drawn as targets
 for that mission, alongside the mission's own targets.
 
+### Sharing a contract
+
+A drawn contract shows a **Copy code** button. The code (`R47-…`) holds the whole contract — mission, targets,
+methods, outfits, complications, starting location and loadout. Paste it in the field under **Draw a contract**
+and press **Load**: you get the same contract, ready to accept. The starting location and items are taken from
+*your* unlocks; anything you have not unlocked is left free, and the sheet says so.
+
+### Settings on the sheet
+
+Besides the number of targets and complications, the **Settings** panel lets you:
+
+- untick **destinations** you do not want to be drawn (all ticked by default);
+- draw **mission targets only** — no NPCs (off by default: mission targets and NPCs are mixed);
+- tune Freestyle (method families, imposed method and outfit), the locked loadout, sounds and the automatic menus.
+
 ### Settings — `Retail\Roulette47\roulette47.ini`
 
 Most settings live on the sheet (**Settings**). A few are only in the file:
@@ -105,6 +133,9 @@ Most settings live on the sheet (**Settings**). A few are only in the file:
 | `touche` | Windows virtual-key code | Key that opens the sheet (`120` = F9). |
 | `cibles_min`, `cibles_max` | `1`–`3` | Number of targets. |
 | `complications` | `0`–`3` | Complications drawn (Assassin and Freestyle). |
+| `cibles_du_jeu` | `0` · `1` | Mission targets only, no NPCs. |
+| `destinations_exclues` | comma-separated location ids | Destinations unticked on the sheet. |
+| `serie_puriste` | number | Current Purist streak. |
 | `outils_developpement` | `0` · `1` | Opens the WebView2 developer tools. |
 
 ## Under the hood

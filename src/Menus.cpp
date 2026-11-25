@@ -351,6 +351,38 @@ std::vector<SEntree> EntreesPourMission(const std::vector<SEntree>& p_Possedees,
     return s_Choix.empty() ? s_DuLieu : s_Choix;
 }
 
+SPreparation PreparationDepuisIds(const SPlanification& p_Planif, const std::vector<SObjetInventaire>& p_Inventaire,
+                                  const std::string& p_Entree, const std::string& p_Arme, const std::string& p_Objet,
+                                  const std::string& p_Objet2, std::vector<std::string>& p_Manquants) {
+    SPreparation p;
+    p.m_IdContrat = p_Planif.m_IdContrat;
+
+    if (!p_Entree.empty()) {
+        const auto s_It = std::ranges::find(p_Planif.m_Entrees, p_Entree, &SEntree::m_Id);
+        if (s_It != p_Planif.m_Entrees.end()) {
+            p.m_Entree.m_Id = s_It->m_Id;
+            p.m_Entree.m_IdJeu = s_It->m_IdJeu;
+            p.m_Entree.m_Nom = s_It->m_Nom;
+            p.m_Entree.m_Cle = s_It->m_CleNom;
+            p.m_Entree.m_Image = s_It->m_Image;
+        }
+        else {
+            p_Manquants.push_back(p_Entree);
+        }
+    }
+
+    const auto Prendre = [&](const std::string& p_Id, SImpose& p_Sortie) {
+        if (p_Id.empty()) return;
+        const auto s_It = std::ranges::find(p_Inventaire, p_Id, &SObjetInventaire::m_Id);
+        if (s_It != p_Inventaire.end()) p_Sortie = Imposer(*s_It);
+        else p_Manquants.push_back(p_Id);
+    };
+    Prendre(p_Arme, p.m_Arme);
+    Prendre(p_Objet, p.m_Objet);
+    Prendre(p_Objet2, p.m_Objet2);
+    return p;
+}
+
 std::vector<std::string> JetonsDesTenues(const SPlanification& p_Planif, const std::vector<std::string>& p_NomsInternes) {
     std::vector<std::string> s_Jetons;
     for (const auto& e : p_Planif.m_Entrees) {
@@ -497,7 +529,8 @@ std::vector<SDestination> DestinationsDepuisJson(const json& p_Json) {
 
 // ---------------------------------------------------------------- Tirages
 
-bool TirerDestination(const std::vector<SDestination>& p_Destinations, std::mt19937& p_Hasard, int& p_Lieu, int& p_Mission) {
+bool TirerDestination(const std::vector<SDestination>& p_Destinations, std::mt19937& p_Hasard, int& p_Lieu, int& p_Mission,
+                      const std::set<std::string>& p_Exclues) {
     const auto Jouables = [](const SDestination& d) {
         std::vector<int> s_Index;
         for (size_t j = 0; j < d.m_Missions.size(); ++j) {
@@ -511,6 +544,11 @@ bool TirerDestination(const std::vector<SDestination>& p_Destinations, std::mt19
         if (!p_Destinations[i].m_Verrouillee && !Jouables(p_Destinations[i]).empty()) s_Lieux.push_back(static_cast<int>(i));
     }
     if (s_Lieux.empty()) return false;
+
+    // Les lieux décochés dans les réglages ; tous décochés : aucun n'est écarté.
+    std::vector<int> s_Gardes;
+    for (const int i : s_Lieux) if (!p_Exclues.contains(p_Destinations[i].m_Id)) s_Gardes.push_back(i);
+    if (!s_Gardes.empty()) s_Lieux = std::move(s_Gardes);
 
     p_Lieu = s_Lieux[std::uniform_int_distribution<size_t>(0, s_Lieux.size() - 1)(p_Hasard)];
     const auto s_Missions = Jouables(p_Destinations[p_Lieu]);

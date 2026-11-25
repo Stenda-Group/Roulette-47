@@ -61,6 +61,8 @@ set(SOURCES_MOD
     src/Tirage.cpp
     src/Langue.cpp
     src/Glacier.cpp
+    src/CodeContrat.cpp
+    src/Discord.cpp
     src/Diagnostic.cpp
     src/Http.cpp
     src/Contrat.cpp

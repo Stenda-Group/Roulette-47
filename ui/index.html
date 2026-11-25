@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Roulette 47</title>
-<link rel="stylesheet" href="roulette.css?v=25">
+<link rel="stylesheet" href="roulette.css?v=29">
 </head>
 <body>
 <!--
@@ -37,9 +37,16 @@
       <h1 class="accueil__titre" data-t-html="accueil_titre">Laisse le hasard<br>choisir ta cible</h1>
       <p class="accueil__texte" id="accueil-texte"></p>
       <div class="modes" id="modes" role="radiogroup" aria-label="Mode de la roulette" data-t-aria="modes_aria"></div>
-      <button class="bouton bouton--principal bouton--grand" id="btn-tirer">
-        <svg viewBox="0 0 24 24"><use href="#i-de"/></svg><span data-t="tirer">Tirer un contrat</span>
-      </button>
+      <div class="accueil__boutons">
+        <button class="bouton bouton--principal bouton--grand" id="btn-tirer">
+          <svg viewBox="0 0 24 24"><use href="#i-de"/></svg><span data-t="tirer">Tirer un contrat</span>
+        </button>
+        <form class="code" id="form-code" autocomplete="off">
+          <input class="code__champ" id="champ-code" type="text" spellcheck="false" data-t-placeholder="code_coller" placeholder="Coller un code de contrat">
+          <button class="bouton" type="button" id="btn-charger" data-t="code_charger">Charger</button>
+        </form>
+      </div>
+      <p class="code__message" id="code-message" hidden></p>
     </div>
   </section>
 
@@ -83,6 +90,7 @@
   <footer class="actions">
     <button class="bouton bouton--principal" id="btn-accepter"><svg viewBox="0 0 24 24"><use href="#i-ok"/></svg><span data-t="accepter">Accepter le contrat</span></button>
     <button class="bouton" id="btn-relancer"><svg viewBox="0 0 24 24"><use href="#i-de"/></svg><span data-t="relancer">Relancer</span></button>
+    <button class="bouton bouton--discret" id="btn-code"><svg viewBox="0 0 24 24"><use href="#i-porte"/></svg><span id="btn-code-texte" data-t="code_copier">Copier le code</span></button>
     <button class="bouton bouton--discret" id="btn-refuser"><svg viewBox="0 0 24 24"><use href="#i-ko"/></svg><span id="btn-refuser-texte">Refuser</span></button>
     <span class="actions__aide" id="aide"></span>
     <button class="bouton bouton--discret" id="btn-reglages"><svg viewBox="0 0 24 24"><use href="#i-reglages"/></svg><span data-t="reglages">Réglages</span></button>
@@ -105,10 +113,17 @@
     <label class="interrupteur" data-freestyle><input type="checkbox" data-reglage="imposerMethode"><span></span><b class="txt" data-t="r_imposerMethode">Imposer une méthode</b></label>
     <label class="interrupteur" data-freestyle><input type="checkbox" data-reglage="imposerTenue"><span></span><b class="txt" data-t="r_imposerTenue">Imposer une tenue</b></label>
     <label class="interrupteur" data-freestyle><input type="checkbox" data-reglage="costume"><span></span><b class="txt" data-t="r_costume">Costume de 47 possible</b></label>
+    <div class="reglage-ligne reglage-ligne--colonne">
+      <span data-t="destinations_reglage">Destinations tirées</span>
+      <div class="puces" id="destinations-reglage"></div>
+    </div>
+
+    <label class="interrupteur"><input type="checkbox" data-reglage="ciblesDuJeu"><span></span><b class="txt" data-t="r_ciblesDuJeu">Cibles du jeu uniquement (aucun PNJ)</b></label>
     <label class="interrupteur"><input type="checkbox" data-reglage="imposerPreparation"><span></span><b class="txt" data-t="r_imposerPreparation">Imposer entrée et équipement</b></label>
     <label class="interrupteur"><input type="checkbox" data-reglage="remplacerObjectifs"><span></span><b class="txt" data-t="r_remplacerObjectifs">Seuls les objectifs de la roulette comptent</b></label>
     <label class="interrupteur"><input type="checkbox" data-reglage="echecImpose"><span></span><b class="txt" data-t="r_echecImpose">Écart = mission échouée</b></label>
     <label class="interrupteur"><input type="checkbox" data-reglage="destinationAuto"><span></span><b class="txt" data-t="r_destinationAuto">Mener les menus à la mission tirée</b></label>
+    <label class="interrupteur"><input type="checkbox" data-reglage="discord"><span></span><b class="txt" data-t="r_discord">Afficher la roulette sur Discord</b></label>
     <label class="interrupteur"><input type="checkbox" data-reglage="sons"><span></span><b class="txt" data-t="r_sons">Effets sonores</b></label>
     <label class="interrupteur"><input type="checkbox" data-reglage="pilote"><span></span><b class="txt" data-t="r_pilote">Aller seul à la mission acceptée</b></label>
     <label class="interrupteur"><input type="checkbox" data-reglage="tirageAuto"><span></span><b class="txt" data-t="r_tirageAuto">Roulette aussi sans contrat accepté</b></label>
@@ -148,8 +163,8 @@
   <symbol id="i-tete" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" stroke-width="2"/></symbol>
 </svg>
 
-<script src="textes.js?v=25"></script>
-<script src="roulette.js?v=25"></script>
-<script src="maquette.js?v=25"></script>
+<script src="textes.js?v=29"></script>
+<script src="roulette.js?v=29"></script>
+<script src="maquette.js?v=29"></script>
 </body>
 </html>

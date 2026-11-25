@@ -93,6 +93,7 @@ struct SReglages {
     bool m_Pilote = true;             // contrat accepté : le mod mène lui-même les menus jusqu'à la préparation
     bool m_EchecImpose = true;        // contrat rompu = mission à recommencer
     bool m_ImposerPreparation = true; // entrée, arme et objet tirés sur l'écran de préparation
+    bool m_CiblesDuJeuSeules = false; // seulement les cibles du contrat, jamais de PNJ (défaut : mélangés)
 };
 
 const std::vector<const char*>& FamillesMethodes();

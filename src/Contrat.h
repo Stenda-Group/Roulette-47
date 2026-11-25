@@ -45,5 +45,10 @@ int MasquerObjectifsDuJeu(nlohmann::json& p_Donnees, const std::vector<std::stri
 // tuile par complication.
 nlohmann::json BriefingRoulette(const STirage& p_Tirage);
 
+// Les réglages du contrat lui-même (Contract.Data) : difficulté « Professionnel »
+// seule (GameDifficulties réduit à « normal », le sélecteur de la préparation
+// n'a plus que celle-là), et, en Puriste, aucune sauvegarde (EnableSaving).
+void ReglerContrat(nlohmann::json& p_Donnees, EMode p_Mode);
+
 // L'image du jeu d'une complication (celle des conditions de contrat), "" sinon.
 const char* ImageComplication(const std::string& p_Cle);

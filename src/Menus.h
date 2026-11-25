@@ -25,6 +25,8 @@
 #include <string>
 #include <vector>
 
+#include <set>
+
 #include <nlohmann/json.hpp>
 
 #include "Tirage.h"
@@ -143,13 +145,23 @@ std::vector<SDestination> DestinationsDepuisJson(const nlohmann::json& p_Json);
 
 // Une destination possédée et une de ses missions débloquées dont on connaît
 // les cibles. Rend faux s'il n'y a rien à tirer.
-bool TirerDestination(const std::vector<SDestination>& p_Destinations, std::mt19937& p_Hasard, int& p_Lieu, int& p_Mission);
+// p_Exclues : les lieux (identifiants) que le joueur a décochés dans les
+// réglages ; s'ils le sont tous, aucun n'est écarté.
+bool TirerDestination(const std::vector<SDestination>& p_Destinations, std::mt19937& p_Hasard, int& p_Lieu, int& p_Mission,
+                      const std::set<std::string>& p_Exclues = {});
 
 // Entrée, arme dissimulée et équipement, cohérents avec les méthodes tirées
 // (une seringue létale pour « poison injecté »…).
 SPreparation TirerPreparation(const SPlanification& p_Planif, const std::vector<SObjetInventaire>& p_Inventaire,
                               const STirage& p_Tirage, EMode p_Mode, std::mt19937& p_Hasard,
                               const std::vector<std::string>& p_JetonsVoulus = {});
+
+// La préparation d'un contrat reçu par code : entrée, arme et objets désignés
+// par leur identifiant, pris dans les déblocages de CE joueur. Ce qu'il ne
+// possède pas reste vide (p_Manquants reçoit leurs identifiants).
+SPreparation PreparationDepuisIds(const SPlanification& p_Planif, const std::vector<SObjetInventaire>& p_Inventaire,
+                                  const std::string& p_Entree, const std::string& p_Arme, const std::string& p_Objet,
+                                  const std::string& p_Objet2, std::vector<std::string>& p_Manquants);
 
 // Freestyle : les jetons de tenue (TOKEN_OUTFIT_…) des entrées de la mission qui
 // font partir 47 dans l'une des tenues données, par leur nom interne du dépôt

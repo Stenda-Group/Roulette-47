@@ -76,6 +76,7 @@ const std::vector<SComplication>& Complications() {
         { "aucun_changement",       "Aucun changement de tenue",       "Vous gardez votre tenue de départ." },
         { "aucun_enregistrement",   "Aucun enregistrement",            "Aucune caméra ne doit vous filmer." },
         { "tirs_tete",              "Tirs à la tête uniquement",       "Toute élimination par balle se fait à la tête." },
+        { "ordre_impose",           "Ordre d'élimination imposé",      "Éliminez les cibles dans l'ordre de la fiche." },
     };
 
     return s_Complications;
@@ -124,6 +125,7 @@ namespace {
     const std::vector<const char*>& ComplicationsAssassin() {
         static const std::vector<const char*> s_Liste = {
             "sans_etre_repere", "aucun_corps", "aucune_victime", "aucun_enregistrement", "aucun_changement", "tirs_tete",
+            "ordre_impose",
         };
         return s_Liste;
     }
@@ -194,6 +196,11 @@ EEtatObjectif STirage::Bilan() const {
 void ChoisirCibles(STirage& p_Tirage, const SReglages& p_Reglages, std::mt19937& p_Hasard) {
     auto s_Toutes = std::move(p_Tirage.m_Cibles);
     p_Tirage.m_Cibles.clear();
+
+    // Réglage « cibles du jeu uniquement » : aucun PNJ.
+    if (p_Reglages.m_CiblesDuJeuSeules) {
+        std::erase_if(s_Toutes, [](const SObjectifCible& c) { return !c.m_Officielle; });
+    }
 
     const int s_Min = std::clamp(p_Reglages.m_CiblesMin, 1, 3);
     const int s_Max = std::clamp(p_Reglages.m_CiblesMax, s_Min, 3);
@@ -292,6 +299,10 @@ void Tirer(STirage& p_Tirage, const SReglages& p_Reglages, std::mt19937& p_Hasar
         for (size_t i = 0; i < Complications().size(); ++i) {
             const std::string_view s_Cle = Complications()[i].m_Cle;
             if (s_TenueImposee && s_Cle == "aucun_changement") continue;
+            // L'ordre : au moins deux cibles, toutes connues par leur identifiant.
+            if (s_Cle == "ordre_impose" &&
+                (p_Tirage.m_Cibles.size() < 2 ||
+                 std::ranges::any_of(p_Tirage.m_Cibles, [](const SObjectifCible& c) { return c.m_Id.empty() || c.m_Id.starts_with("pnj:"); }))) continue;
             if (s_Mode == EMode::Assassin) {
                 if (std::ranges::none_of(ComplicationsAssassin(), [&](const char* c) { return s_Cle == c; })) continue;
                 if (s_Cle == "tirs_tete" && !s_ArmeAFeu) continue;
@@ -375,6 +386,16 @@ bool AppliquerEvenement(STirage& p_Tirage, const std::string& p_Nom, const nlohm
                 if (!s_Ok) {
                     if (!s_Detail.empty()) s_Detail += " · ";
                     s_Detail += Tx("detail.tenue");
+                }
+            }
+
+            // Ordre imposé : une cible plus haut sur la fiche encore en vie.
+            if (const auto s_Rang = &s_Cible - p_Tirage.m_Cibles.data(); s_Rang > 0) {
+                for (ptrdiff_t j = 0; j < s_Rang; ++j) {
+                    if (p_Tirage.m_Cibles[j].m_Etat == EEtatObjectif::EnCours) {
+                        s_Change |= Echouer(p_Tirage, "ordre_impose");
+                        break;
+                    }
                 }
             }
 

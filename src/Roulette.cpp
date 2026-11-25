@@ -15,12 +15,18 @@
 #include "Diagnostic.h"
 #include "Glacier.h"
 #include "Langue.h"
+#include "CodeContrat.h"
 #include "Contrat.h"
 #include "Http.h"
 #include "Json.h"
 #include "Moteur.h"
 
 namespace {
+    // L'application Discord de Roulette 47 (portail des développeurs de
+    // Discord) ; « discord_app » de roulette47.ini la remplace. Vide : pas de
+    // présence tant qu'aucune n'est réglée.
+    constexpr const char* c_IdDiscordParDefaut = "";
+
     // p_Json[a][b]… s'il existe, sinon nullptr (rien n'est créé dans la page).
     nlohmann::json* NoeudJson(nlohmann::json& p_Json, std::initializer_list<const char*> p_Cles) {
         nlohmann::json* s_Noeud = &p_Json;
@@ -149,7 +155,7 @@ void Roulette::ReprendreAncienDossier() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.15 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v0.16 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
 
     if (!Moteur::Resoudre()) {
@@ -210,7 +216,9 @@ void Roulette::Demarrer() {
     Moteur::PreparerImage(&Roulette::SurImage);
     Diag("Ouverture directe des pages : {}.", Moteur::PeutOuvrirPage() ? "prête" : "impossible (pilote seul)");
 
-    Diag("Prêt. Touche de la fiche : 0x{:02X}.", m_Touche);
+    if (m_DiscordActif && !m_IdDiscord.empty()) m_Discord.Demarrer(m_IdDiscord);
+    Diag("Prêt. Touche de la fiche : 0x{:02X}. Discord : {}.", m_Touche,
+         !m_DiscordActif ? "coupé" : m_IdDiscord.empty() ? "aucune application (discord_app)" : "actif");
 }
 
 // ------------------------------------------------------------ Réglages
@@ -235,6 +243,29 @@ void Roulette::ChargerReglages() {
     m_Reglages.m_NbPnj = std::clamp(Lire(L"pnj", 1), 0, 3);
     m_Reglages.m_EchecImpose = Lire(L"echec_impose", 1) != 0;
     m_Reglages.m_ImposerPreparation = Lire(L"imposer_preparation", 1) != 0;
+    m_Reglages.m_CiblesDuJeuSeules = Lire(L"cibles_du_jeu", 0) != 0;
+    m_SeriePuriste = std::max(0, Lire(L"serie_puriste", 0));
+    m_DiscordActif = Lire(L"discord", 1) != 0;
+    {
+        wchar_t s_Id[64] = {};
+        GetPrivateProfileStringW(L"roulette", L"discord_app", L"", s_Id, 64, s_Fichier.c_str());
+        m_IdDiscord.clear();
+        for (const wchar_t* c = s_Id; *c; ++c) if (*c >= L'0' && *c <= L'9') m_IdDiscord += static_cast<char>(*c);
+        if (m_IdDiscord.empty()) m_IdDiscord = c_IdDiscordParDefaut;
+    }
+    {
+        wchar_t s_Liste[4096] = {};
+        GetPrivateProfileStringW(L"roulette", L"destinations_exclues", L"", s_Liste, 4096, s_Fichier.c_str());
+        std::string s_Texte;
+        for (const wchar_t* c = s_Liste; *c; ++c) s_Texte += static_cast<char>(*c < 128 ? *c : '?');
+        m_DestinationsExclues.clear();
+        size_t s_Debut = 0;
+        while (s_Debut <= s_Texte.size()) {
+            const size_t s_Fin = std::min(s_Texte.find(',', s_Debut), s_Texte.size());
+            if (s_Fin > s_Debut) m_DestinationsExclues.insert(s_Texte.substr(s_Debut, s_Fin - s_Debut));
+            s_Debut = s_Fin + 1;
+        }
+    }
     m_Reglages.m_CiblesMin = std::clamp(Lire(L"cibles_min", 1), 1, 3);
     m_Reglages.m_CiblesMax = std::clamp(Lire(L"cibles_max", 3), m_Reglages.m_CiblesMin, 3);
     m_Reglages.m_RemplacerObjectifs = Lire(L"remplacer_objectifs", 1) != 0;
@@ -298,6 +329,16 @@ void Roulette::EnregistrerReglages() {
     Ecrire(L"pnj", s_R.m_NbPnj);
     Ecrire(L"echec_impose", s_R.m_EchecImpose);
     Ecrire(L"imposer_preparation", s_R.m_ImposerPreparation);
+    Ecrire(L"cibles_du_jeu", s_R.m_CiblesDuJeuSeules);
+    Ecrire(L"discord", m_DiscordActif);
+    {
+        std::wstring s_Liste;
+        {
+            std::lock_guard s_Verrou(m_Verrou);
+            for (const auto& s_Id : m_DestinationsExclues) s_Liste += (s_Liste.empty() ? L"" : L",") + Large(s_Id);
+        }
+        WritePrivateProfileStringW(L"roulette", L"destinations_exclues", s_Liste.c_str(), s_Fichier.c_str());
+    }
     Ecrire(L"cibles_min", s_R.m_CiblesMin);
     Ecrire(L"cibles_max", s_R.m_CiblesMax);
     Ecrire(L"remplacer_objectifs", s_R.m_RemplacerObjectifs);
@@ -505,6 +546,9 @@ bool Roulette::InjecterContrat(nlohmann::json& p_Reponse) {
     const auto s_Objectifs = ObjectifsRoulette(s_Tirage, m_Hasard, m_Reglages.m_RemplacerObjectifs, &s_IdsCibles);
     const int s_Masques = m_Reglages.m_RemplacerObjectifs ? MasquerObjectifsDuJeu(s_Contrat["Data"], s_IdsCibles) : 0;
     for (const auto& o : s_Objectifs) s_Contrat["Data"]["Objectives"].push_back(o);
+
+    // ---- Difficulté Professionnel ; Puriste : sans sauvegarde.
+    ReglerContrat(s_Contrat["Data"], s_Tirage.m_Mode);
 
     // ---- L'équipement tiré à la préparation devient l'équipement obligatoire.
     const bool s_Obligatoire = s_DeLaPreparation && m_Reglages.m_ImposerPreparation &&
@@ -900,6 +944,13 @@ bool Roulette::PreparerAvantMission(nlohmann::json& p_Page) {
              s_Trouvee ? "imposé au jeu" : "absent de la page, NON imposé");
     }
 
+    // Difficulté Professionnel seule dans le sélecteur de la préparation ;
+    // Puriste : sans sauvegarde (mêmes réglages que le contrat de la mission).
+    for (auto* s_Donnees : { NoeudJson(p_Page, { "data", "Contract", "Data" }),
+                             NoeudJson(p_Page, { "data", "UserCentric", "Contract", "Data" }) }) {
+        if (s_Donnees) ReglerContrat(*s_Donnees, m_TiragePrepare.m_Mode);
+    }
+
     // Le contrat que la page porte (briefing, « Objectifs ») : mêmes objectifs
     // que ceux qui seront écrits dans le contrat de la mission.
     bool s_Objectifs = false;
@@ -958,6 +1009,7 @@ void Roulette::TirerAvantMission() {
         }
 
         t.m_Preparation = TirerPreparation(m_Planif, m_Inventaire, t, m_Reglages.m_Mode, m_Hasard, s_Jetons);
+        CompleterImposes(t.m_Preparation);
         if (!s_Jetons.empty()) Diag("Freestyle : entrée dans la tenue d'une cible possible ({} jeton(s)), entrée « {} ».",
                                     s_Jetons.size(), t.m_Preparation.m_Entree.m_Nom);
 
@@ -965,17 +1017,6 @@ void Roulette::TirerAvantMission() {
             Diag("Entrée « {} » : 47 y est repéré dès le départ, « Ne pas être repéré » écartée.", t.m_Preparation.m_Entree.m_Nom);
         }
 
-        for (auto* s_Impose : { &t.m_Preparation.m_Arme, &t.m_Preparation.m_Objet, &t.m_Preparation.m_Objet2 }) {
-            if (s_Impose->Vide()) continue;
-            const auto* e = m_Depot.Trouver(s_Impose->m_Id);
-            if (e && s_Impose->m_Image.empty()) s_Impose->m_Image = e->m_Image;
-            // Pas encore de texte du jeu pour cet objet : un nom générique en
-            // français pour l'équipement de 47, sinon le nom de sa fiche, nettoyé.
-            if (s_Impose->m_Nom == s_Impose->m_IdJeu) {
-                if (const char* g = NomGenerique(s_Impose->m_IdJeu)) s_Impose->m_Nom = g;
-                else s_Impose->m_Nom = NomNettoye(e ? (e->m_NomCommun.empty() ? e->m_Nom : e->m_NomCommun) : s_Impose->m_IdJeu);
-            }
-        }
     }
 
     m_TiragePrepare = std::move(t);
@@ -991,6 +1032,9 @@ void Roulette::TirerAvantMission() {
         for (const auto* s_Impose : { &p.m_Entree, &p.m_Arme, &p.m_Objet, &p.m_Objet2 }) m_Images->Demander(s_Impose->m_Image);
     }
 
+    std::string s_Compl;
+    for (const auto& c : m_TiragePrepare.m_Complications) s_Compl += std::string(s_Compl.empty() ? "" : ", ") + Complications()[c.m_Index].m_Cle;
+    Diag("Complications tirées : {}.", s_Compl.empty() ? "aucune" : s_Compl);
     const auto& p = m_TiragePrepare.m_Preparation;
     Diag("Tirage d'avant-mission (mode {}) : {} cible(s), {} tenue(s){} ; entrée « {} », arme « {} », objets « {} » et « {} » ({} objet(s) en inventaire).",
          LibelleMode(m_Reglages.m_Mode), m_TiragePrepare.m_Cibles.size(), m_TiragePrepare.m_Tenues.size(), s_Memoire ? "" : " (lieu jamais visité)",
@@ -1025,6 +1069,34 @@ bool Roulette::TirerContrat() {
         return false;
     }
 
+    m_ErreurCode.clear();
+    m_AvertissementCode.clear();
+    PreparerPlanification();
+    TirerAvantMission();
+    m_Propose = true;
+    m_Prepare = false;
+    m_Tirage = m_TiragePrepare;
+    return true;
+}
+
+// Images et noms lisibles de l'entrée et de l'équipement imposés. Sous verrou.
+void Roulette::CompleterImposes(SPreparation& p_Preparation) {
+    for (auto* s_Impose : { &p_Preparation.m_Arme, &p_Preparation.m_Objet, &p_Preparation.m_Objet2 }) {
+        if (s_Impose->Vide()) continue;
+        const auto* e = m_Depot.Trouver(s_Impose->m_Id);
+        if (e && s_Impose->m_Image.empty()) s_Impose->m_Image = e->m_Image;
+        // Pas encore de texte du jeu pour cet objet : un nom générique en
+        // français pour l'équipement de 47, sinon le nom de sa fiche, nettoyé.
+        if (s_Impose->m_Nom == s_Impose->m_IdJeu) {
+            if (const char* g = NomGenerique(s_Impose->m_IdJeu)) s_Impose->m_Nom = g;
+            else s_Impose->m_Nom = NomNettoye(e ? (e->m_NomCommun.empty() ? e->m_Nom : e->m_NomCommun) : s_Impose->m_IdJeu);
+        }
+    }
+}
+
+// La planification de la mission tirée (m_DestLieu, m_DestMission) : entrées
+// possédées, cibles du contrat, nom du lieu et de la mission. Sous verrou.
+void Roulette::PreparerPlanification() {
     const auto& d = m_Destinations[m_DestLieu];
     const auto& m = d.m_Missions[m_DestMission];
 
@@ -1057,11 +1129,169 @@ bool Roulette::TirerContrat() {
 
     m_Lieu = d.m_Nom;
     m_TitreMission = m.m_Titre;
+}
 
-    TirerAvantMission();
+// ------------------------------------------------------------ Code de contrat
+
+// Le contrat proposé ou accepté, en JSON compact : mission, cibles (nom et
+// photo compris : celui qui reçoit le code n'a peut-être jamais relevé ce lieu),
+// méthodes et complications par leur clé, tenues, entrée et équipement par leur
+// identifiant. Sous verrou.
+std::string Roulette::CodeDuContrat() const {
+    using nlohmann::json;
+    if (!(m_Propose || m_Prepare) || m_IdContratPrepare.empty() || !m_TiragePrepare.m_Valide) return {};
+    const auto& t = m_TiragePrepare;
+
+    // Seulement les tenues imposées aux cibles (le code reste court).
+    json s_Tenues = json::array();
+    std::map<int, int> s_Renumero;
+    for (const auto& c : t.m_Cibles) {
+        if (c.m_Tenue < 0 || c.m_Tenue >= static_cast<int>(t.m_Tenues.size()) || s_Renumero.contains(c.m_Tenue)) continue;
+        const auto& s = t.m_Tenues[c.m_Tenue];
+        s_Renumero[c.m_Tenue] = static_cast<int>(s_Tenues.size());
+        s_Tenues.push_back(s.m_EstCostume ? json { { "s", true } } : json { { "i", s.m_Id }, { "n", s.m_Nom }, { "im", s.m_Image } });
+    }
+
+    json s_Cibles = json::array();
+    for (const auto& c : t.m_Cibles) {
+        json s_Cible = { { "i", c.m_Id }, { "n", c.m_Nom }, { "im", c.m_Image } };
+        if (!c.m_Officielle) s_Cible["o"] = false;
+        if (c.m_Methode >= 0) s_Cible["me"] = Methodes()[c.m_Methode].m_Cle;
+        if (const auto s_It = s_Renumero.find(c.m_Tenue); s_It != s_Renumero.end()) s_Cible["te"] = s_It->second;
+        s_Cibles.push_back(std::move(s_Cible));
+    }
+
+    json s_Complications = json::array();
+    for (const auto& c : t.m_Complications) s_Complications.push_back(Complications()[c.m_Index].m_Cle);
+
+    const auto& p = t.m_Preparation;
+    json s_Prep = json::object();
+    if (!p.m_Entree.m_Id.empty()) s_Prep["e"] = p.m_Entree.m_Id;
+    if (!p.m_Arme.m_Id.empty()) s_Prep["a"] = p.m_Arme.m_Id;
+    if (!p.m_Objet.m_Id.empty()) s_Prep["o"] = p.m_Objet.m_Id;
+    if (!p.m_Objet2.m_Id.empty()) s_Prep["o2"] = p.m_Objet2.m_Id;
+    return EncoderContrat({
+        { "v", 1 }, { "mo", CleMode(t.m_Mode) }, { "c", m_IdContratPrepare },
+        { "cib", s_Cibles }, { "ten", s_Tenues }, { "k", s_Complications }, { "p", s_Prep },
+    });
+}
+
+// Sous verrou.
+bool Roulette::ImporterContrat(const std::string& p_Code) {
+    using nlohmann::json;
+    m_ErreurCode.clear();
+    m_AvertissementCode.clear();
+
+    const json s_Code = DecoderContrat(p_Code);
+    if (s_Code.is_null()) {
+        m_ErreurCode = Tx("code.illisible");
+        Diag("Code de contrat illisible.");
+        return false;
+    }
+
+    // La mission, parmi celles que ce joueur possède.
+    const auto s_IdContrat = ChampTexte(s_Code, "c");
+    int l = -1, m = -1;
+    for (int i = 0; i < static_cast<int>(m_Destinations.size()) && l < 0; ++i) {
+        for (int j = 0; j < static_cast<int>(m_Destinations[i].m_Missions.size()); ++j) {
+            if (m_Destinations[i].m_Missions[j].m_Id == s_IdContrat) {
+                l = i;
+                m = j;
+                break;
+            }
+        }
+    }
+    if (l < 0) {
+        m_ErreurCode = Tx("code.mission");
+        Diag("Code de contrat : mission {} absente des destinations de ce joueur.", s_IdContrat);
+        return false;
+    }
+
+    m_Depot.Charger();
+    ApprendreNoms();
+    if (m_Images) m_Images->RelireService();
+    if (m_ImagesMethodes.empty() || m_ImageCostume.empty()) ChoisirImagesObjets();
+
+    m_DestLieu = l;
+    m_DestMission = m;
+    m_DestIdLieu = m_Destinations[l].m_Id;
+    m_DestContrat = s_IdContrat;
+    ++m_NumeroDestination;
+    PreparerPlanification();
+
+    STirage t;
+    t.m_Mode = ModeDepuisCle(ChampTexte(s_Code, "mo"));
+
+    for (const auto& s : s_Code.value("ten", json::array())) {
+        STenue s_Tenue;
+        s_Tenue.m_Id = ChampTexte(s, "i");
+        s_Tenue.m_Nom = ChampTexte(s, "n");
+        s_Tenue.m_Image = ChampTexte(s, "im");
+        s_Tenue.m_EstCostume = ChampBooleen(s, "s");
+        if (s_Tenue.m_EstCostume) {
+            s_Tenue.m_Nom = Tx("costume47");
+            s_Tenue.m_Image = m_ImageCostume;
+        }
+        t.m_Tenues.push_back(std::move(s_Tenue));
+    }
+
+    for (const auto& c : s_Code.value("cib", json::array())) {
+        SObjectifCible s_Cible;
+        s_Cible.m_Id = ChampTexte(c, "i");
+        s_Cible.m_Nom = ChampTexte(c, "n");
+        s_Cible.m_Image = ChampTexte(c, "im");
+        s_Cible.m_Officielle = c.value("o", true);
+        s_Cible.m_CleNom = CleNom(s_Cible.m_Nom);
+        const auto s_Methode = ChampTexte(c, "me");
+        for (size_t i = 0; i < Methodes().size(); ++i) {
+            if (s_Methode == Methodes()[i].m_Cle) s_Cible.m_Methode = static_cast<int>(i);
+        }
+        const int s_Tenue = c.value("te", -1);
+        s_Cible.m_Tenue = s_Tenue >= 0 && s_Tenue < static_cast<int>(t.m_Tenues.size()) ? s_Tenue : -1;
+        if (!s_Cible.m_Id.empty()) t.m_Cibles.push_back(std::move(s_Cible));
+    }
+
+    for (const auto& k : s_Code.value("k", json::array())) {
+        if (!k.is_string()) continue;
+        for (size_t i = 0; i < Complications().size(); ++i) {
+            if (k.get<std::string>() == Complications()[i].m_Cle) t.m_Complications.push_back({ static_cast<int>(i), EEtatObjectif::EnCours });
+        }
+    }
+
+    if (t.m_Cibles.empty()) {
+        m_ErreurCode = Tx("code.illisible");
+        return false;
+    }
+
+    // Entrée et équipement : ceux de CE joueur, s'il les a débloqués.
+    const auto& P = s_Code.contains("p") && s_Code["p"].is_object() ? s_Code["p"] : json::object();
+    std::vector<std::string> s_Manquants;
+    t.m_Preparation = PreparationDepuisIds(m_Planif, m_Inventaire, ChampTexte(P, "e"), ChampTexte(P, "a"),
+                                           ChampTexte(P, "o"), ChampTexte(P, "o2"), s_Manquants);
+    CompleterImposes(t.m_Preparation);
+    if (!s_Manquants.empty()) {
+        m_AvertissementCode = Tx("code.manquants");
+        Diag("Code de contrat : {} élément(s) de la préparation non débloqué(s) chez ce joueur.", s_Manquants.size());
+    }
+
+    t.m_Valide = true;
+    m_TiragePrepare = std::move(t);
+    m_IdContratPrepare = m_Planif.m_IdContrat;
+    ++m_NumeroTirage;
+
+    if (m_Images) {
+        for (const auto& c : m_TiragePrepare.m_Cibles) m_Images->Demander(c.m_Image);
+        for (const auto& s : m_TiragePrepare.m_Tenues) m_Images->Demander(s.m_Image);
+        for (const auto& c : m_TiragePrepare.m_Complications) m_Images->Demander(ImageComplication(Complications()[c.m_Index].m_Cle));
+        const auto& p = m_TiragePrepare.m_Preparation;
+        for (const auto* s_Impose : { &p.m_Entree, &p.m_Arme, &p.m_Objet, &p.m_Objet2 }) m_Images->Demander(s_Impose->m_Image);
+    }
+
     m_Propose = true;
     m_Prepare = false;
     m_Tirage = m_TiragePrepare;
+    Diag("Contrat importé par code : {} — {} ; {} cible(s), mode {}.", m_Lieu, m_TitreMission, m_Tirage.m_Cibles.size(),
+         LibelleMode(m_Tirage.m_Mode));
     return true;
 }
 
@@ -1169,7 +1399,7 @@ void Roulette::OublierContrat() {
 
 bool Roulette::TirerDestinationMaintenant() {
     int l = -1, m = -1;
-    if (!TirerDestination(m_Destinations, m_Hasard, l, m)) return false;
+    if (!TirerDestination(m_Destinations, m_Hasard, l, m, m_DestinationsExclues)) return false;
 
     m_DestLieu = l;
     m_DestMission = m;
@@ -1276,6 +1506,69 @@ void Roulette::ApprendreNoms() {
         s_Dernier = s_Traduits;
         Diag("Noms : {} objet(s) dans la langue du jeu, {} pas encore ({} nom(s) appris en tout).", s_Traduits, s_Restants, s_Appris);
     }
+}
+
+// Sous verrou.
+void Roulette::TerminerTirage() {
+    const bool s_ACompter = m_TirageInjecte && m_Tirage.m_Valide && !m_Tirage.m_Terminee && m_Tirage.m_Mode == EMode::Puriste;
+    Conclure(m_Tirage);
+    if (!s_ACompter) return;
+
+    m_SeriePuriste = m_Tirage.Bilan() == EEtatObjectif::Reussi ? m_SeriePuriste + 1 : 0;
+    Diag("Puriste sans filet : contrat {} ; série : {}.", m_SeriePuriste > 0 ? "réussi" : "perdu", m_SeriePuriste);
+    // Écrite ici, sans repasser par EnregistrerReglages (qui prend le verrou).
+    const auto s_Fichier = Large(DossierDuMod() + "\\roulette47.ini");
+    WritePrivateProfileStringW(L"roulette", L"serie_puriste", std::to_wstring(m_SeriePuriste).c_str(), s_Fichier.c_str());
+}
+
+// Ce que Discord montre : où en est la roulette. Le chronomètre repart à
+// chaque changement de phase (menus, contrat proposé, accepté, mission). Sous verrou.
+SPresence Roulette::PresenceActuelle() {
+    SPresence p;
+    const auto Mode = [](EMode m) { return Tx(std::string("discord.mode.") + CleMode(m)); };
+    const auto LieuMission = [this] {
+        if (m_Lieu.empty()) return m_TitreMission;
+        return m_TitreMission.empty() ? m_Lieu : m_Lieu + " · " + m_TitreMission;
+    };
+
+    std::string s_Phase;
+    if (m_EnMission && m_TirageInjecte && m_Tirage.m_Valide) {
+        p.m_Details = TxF("discord.mission", Mode(m_Tirage.m_Mode));
+        if (m_Tirage.m_Terminee) {
+            p.m_Etat = Tx(m_Tirage.Bilan() == EEtatObjectif::Reussi ? "discord.reussi" : "discord.echoue");
+        }
+        else {
+            const auto s_Restantes = std::ranges::count_if(m_Tirage.m_Cibles, [](const auto& c) { return c.m_Etat == EEtatObjectif::EnCours; });
+            p.m_Etat = m_Lieu + (m_Lieu.empty() ? "" : " · ") + TxF("discord.cibles", std::to_string(s_Restantes));
+        }
+        s_Phase = "mission" + m_IdLieu;
+    }
+    else if (m_EnMission) {
+        p.m_Details = Tx("discord.sans_roulette");
+        p.m_Etat = m_Lieu;
+        s_Phase = "libre" + m_IdLieu;
+    }
+    else if (m_Prepare) {
+        p.m_Details = TxF("discord.accepte", Mode(m_TiragePrepare.m_Mode));
+        p.m_Etat = LieuMission();
+        s_Phase = "accepte" + m_IdContratPrepare;
+    }
+    else if (m_Propose) {
+        p.m_Details = TxF("discord.propose", Mode(m_TiragePrepare.m_Mode));
+        p.m_Etat = LieuMission();
+        s_Phase = "propose";
+    }
+    else {
+        p.m_Details = Tx("discord.menus");
+        s_Phase = "menus";
+    }
+
+    if (s_Phase != m_PhasePresence) {
+        m_PhasePresence = s_Phase;
+        m_DebutPresence = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+    p.m_Debut = m_DebutPresence;
+    return p;
 }
 
 void Roulette::ChargerEntreesReperees() {
@@ -1407,7 +1700,7 @@ void Roulette::TraiterEvenement(const Glacier::Objet& p_Evenement) {
                 }
             }
             else if (s_Nom == "ContractEnd") {
-                Conclure(m_Tirage);
+                TerminerTirage();
                 s_Change = true;
             }
             else {
@@ -1456,6 +1749,17 @@ void Roulette::ChaqueImage() {
     const double s_Maintenant = Maintenant();
 
 
+    // Discord : la présence voulue, une fois par seconde.
+    if (m_DiscordActif && s_Maintenant - m_DernierePresence > 1.0) {
+        m_DernierePresence = s_Maintenant;
+        SPresence s_Presence;
+        {
+            std::lock_guard s_Verrou(m_Verrou);
+            s_Presence = PresenceActuelle();
+        }
+        m_Discord.Montrer(s_Presence);
+    }
+
     // L'adresse du service d'images et sa signature se renouvellent.
     if (m_Images && s_Maintenant - m_DernierService > 5.0) {
         m_DernierService = s_Maintenant;
@@ -1491,7 +1795,7 @@ void Roulette::ChaqueImage() {
 
             if (!s_EnMission) {
                 // Le niveau s'en va : on oublie ses PNJ sans plus les toucher.
-                Conclure(m_Tirage);
+                TerminerTirage();
                 m_DemandeTirage = false;
                 m_DemandeReleve = false;
                 m_Pnj.clear();
@@ -2059,6 +2363,9 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
     else s_Etat["etat"] = EtatTexte(m_Tirage.Bilan());
 
     s_Etat["enMission"] = m_EnMission;
+    s_Etat["codeContrat"] = CodeDuContrat();
+    s_Etat["erreurCode"] = m_ErreurCode;
+    s_Etat["avertissementCode"] = m_AvertissementCode;
     s_Etat["pilote"] = m_EtatPilote;
     s_Etat["piloteEnCours"] = m_PiloteEnCours.load();
     s_Etat["rompu"] = m_Rompu;
@@ -2099,7 +2406,10 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
     // ---- Destination tirée parmi celles que le joueur possède.
     json s_Possedees = json::array();
     for (const auto& d : m_Destinations) {
-        if (!d.m_Verrouillee) s_Possedees.push_back({ { "nom", d.m_Nom }, { "image", d.m_Image } });
+        if (!d.m_Verrouillee) {
+            s_Possedees.push_back({ { "id", d.m_Id }, { "nom", d.m_Nom }, { "image", d.m_Image },
+                                    { "active", !m_DestinationsExclues.contains(d.m_Id) } });
+        }
     }
 
     json s_Destination = nullptr;
@@ -2118,7 +2428,7 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
     {
         int l = -1, m = -1;
         std::mt19937 s_Essai(1);
-        s_Etat["tirable"] = TirerDestination(m_Destinations, s_Essai, l, m);
+        s_Etat["tirable"] = TirerDestination(m_Destinations, s_Essai, l, m, m_DestinationsExclues);
     }
     s_Etat["numeroDestination"] = m_NumeroDestination;
     s_Etat["destinations"] = s_Possedees;
@@ -2158,6 +2468,9 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
         { "pnj", m_Reglages.m_NbPnj },
         { "echecImpose", m_Reglages.m_EchecImpose },
         { "imposerPreparation", m_Reglages.m_ImposerPreparation },
+        { "ciblesDuJeu", m_Reglages.m_CiblesDuJeuSeules },
+        { "discord", m_DiscordActif },
+        { "seriePuriste", m_SeriePuriste },
         { "ciblesMin", m_Reglages.m_CiblesMin },
         { "ciblesMax", m_Reglages.m_CiblesMax },
         { "remplacerObjectifs", m_Reglages.m_RemplacerObjectifs },
@@ -2263,6 +2576,12 @@ void Roulette::MessagePage(const std::string& p_Json) {
         }
         m_Fenetre.Pousser();
     }
+    else if (s_Action == "importer") {
+        std::lock_guard s_Verrou(m_Verrou);
+        if (!m_EnMission) ImporterContrat(ChampTexte(s_Message, "code"));
+        else m_ErreurCode = Tx("code.en_mission");
+        m_Fenetre.Pousser();
+    }
     else if (s_Action == "refuser") {
         std::lock_guard s_Verrou(m_Verrou);
         if (!m_EnMission && (m_Propose || m_Prepare)) {
@@ -2286,6 +2605,19 @@ void Roulette::MessagePage(const std::string& p_Json) {
             else if (s_Cle == "encart") m_Encart = s_Valeur.is_boolean() && s_Valeur.get<bool>();
             else if (s_Cle == "echecImpose") m_Reglages.m_EchecImpose = s_Valeur.is_boolean() && s_Valeur.get<bool>();
             else if (s_Cle == "imposerPreparation") m_Reglages.m_ImposerPreparation = s_Valeur.is_boolean() && s_Valeur.get<bool>();
+            else if (s_Cle == "ciblesDuJeu") m_Reglages.m_CiblesDuJeuSeules = s_Valeur.is_boolean() && s_Valeur.get<bool>();
+            else if (s_Cle == "discord") {
+                m_DiscordActif = s_Valeur.is_boolean() && s_Valeur.get<bool>();
+                if (m_DiscordActif) m_Discord.Demarrer(m_IdDiscord);
+                else m_Discord.Arreter(); // le tube fermé, Discord efface la présence
+            }
+            else if (s_Cle == "destination") {
+                const auto s_Id = ChampTexte(s_Message, "id");
+                if (!s_Id.empty()) {
+                    if (s_Valeur.is_boolean() && s_Valeur.get<bool>()) m_DestinationsExclues.erase(s_Id);
+                    else m_DestinationsExclues.insert(s_Id);
+                }
+            }
             else if (s_Cle == "pnj" && s_Valeur.is_number_integer()) m_Reglages.m_NbPnj = std::clamp(s_Valeur.get<int>(), 0, 3);
             else if (s_Cle == "remplacerObjectifs") m_Reglages.m_RemplacerObjectifs = s_Valeur.is_boolean() && s_Valeur.get<bool>();
             else if (s_Cle == "destinationAuto") m_Reglages.m_DestinationAuto = s_Valeur.is_boolean() && s_Valeur.get<bool>();

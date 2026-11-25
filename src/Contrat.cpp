@@ -139,6 +139,26 @@ int MasquerObjectifsDuJeu(json& p_Donnees, const std::vector<std::string>& p_Ids
 }
 
 // L'image du jeu de chaque complication (celle des conditions de contrat).
+void ReglerContrat(json& p_Donnees, EMode p_Mode) {
+    if (!p_Donnees.is_object()) return;
+
+    // Professionnel pour tous les contrats (Julien, 25/11/2026).
+    if (auto s_It = p_Donnees.find("GameDifficulties"); s_It != p_Donnees.end() && s_It->is_array()) {
+        json s_Gardees = json::array();
+        for (const auto& d : *s_It) {
+            if (d.is_object() && d.value("Difficulty", "") == "normal") s_Gardees.push_back(d);
+        }
+        if (s_Gardees.empty()) s_Gardees.push_back({ { "Difficulty", "normal" }, { "Bricks", json::array() } });
+        *s_It = std::move(s_Gardees);
+    }
+    else {
+        p_Donnees["GameDifficulties"] = json::array({ { { "Difficulty", "normal" }, { "Bricks", json::array() } } });
+    }
+
+    // Puriste « sans filet » : ni sauvegarde ni chargement, comme une cible fugitive.
+    if (p_Mode == EMode::Puriste) p_Donnees["EnableSaving"] = false;
+}
+
 const char* ImageComplication(const std::string& p_Cle) {
     if (p_Cle == "sans_etre_repere") return "images/contractconditions/condition_contrac_do_not_be_spotted.jpg";
     if (p_Cle == "aucun_corps") return "images/contractconditions/condition_contrac_no_bodies_found.jpg";
@@ -223,6 +243,32 @@ json ObjectifsRoulette(const STirage& p_Tirage, std::mt19937& p_Hasard, bool p_T
         const auto s_Texte = Tx("obj.prefixe") + Tx(std::string("compl.") + d.m_Cle + ".titre");
 
         json s_Echecs;
+
+        if (s_Cle == "ordre_impose") {
+            // Les cibles dans l'ordre de la fiche : chaque étape attend la
+            // suivante, en tuer une autre avant fait échouer. Seulement des
+            // cibles connues par leur identifiant (le tirage écarte sinon).
+            std::vector<std::string> s_Ordre;
+            for (const auto& c : p_Tirage.m_Cibles) {
+                if (!c.m_Id.empty() && !c.m_Id.starts_with("pnj:")) s_Ordre.push_back(c.m_Id);
+            }
+            if (s_Ordre.size() < 2) continue;
+
+            json s_Etats = json::object();
+            for (size_t k = 0; k < s_Ordre.size(); ++k) {
+                const std::string s_Etat = k == 0 ? "Start" : "Etape" + std::to_string(k + 1);
+                const std::string s_Suite = k + 1 == s_Ordre.size() ? "Success" : "Etape" + std::to_string(k + 2);
+                json s_Trop = json::array();
+                for (size_t j = k + 1; j < s_Ordre.size(); ++j) s_Trop.push_back(Egal("RepositoryId", s_Ordre[j]));
+                json s_Kill = json::array({ { { "Condition", Egal("RepositoryId", s_Ordre[k]) }, { "Transition", s_Suite } } });
+                if (!s_Trop.empty()) s_Kill.push_back({ { "Condition", { { "$or", s_Trop } } }, { "Transition", "Failure" } });
+                s_Etats[s_Etat] = { { "Kill", std::move(s_Kill) } };
+            }
+
+            auto s_Objectif = Objectif(p_Hasard, s_Texte, { { "Context", json::object() }, { "States", std::move(s_Etats) } });
+            s_Objectifs.push_back(std::move(s_Objectif));
+            continue;
+        }
 
         if (s_Cle == "sans_etre_repere") {
             // Délai de grâce : repéré dans les premières secondes (l'entrée

@@ -10,6 +10,7 @@
 // mod avant leur départ (Moteur.cpp).
 
 #include <random>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -120,6 +121,10 @@ struct SPreparation {
     SImpose m_Arme;           // arme dissimulée
     SImpose m_Objet;          // équipement (premier emplacement)
     SImpose m_Objet2;         // second équipement (modes Assassin et Puriste)
+    // Le costume de 47 au départ, choisi par le joueur (Julien, 25/11/2026 :
+    // sans effet sur le jeu). Vide : celui du jeu. Jamais pour une entrée qui
+    // fait partir 47 dans une autre tenue.
+    SImpose m_Costume;
 
     [[nodiscard]] bool Vide() const { return m_Entree.Vide() && m_Arme.Vide() && m_Objet.Vide() && m_Objet2.Vide(); }
 };
@@ -157,6 +162,34 @@ inline constexpr double c_GraceDepart = 5.0;
 
 // Retire une complication du tirage ; vrai si elle y était.
 bool EcarterComplication(STirage& p_Tirage, const char* p_Cle);
+
+// ---------------------------------------------------------------- Difficulté
+//
+// Une note de 1 à 10 estimée à partir du contrat tiré (Julien, 25/11/2026).
+// Chaque contrainte coûte des points : une cible (plus pour un PNJ, que le jeu
+// ne met pas en scène), sa méthode (une électrocution précise coûte plus qu'un
+// pistolet), sa tenue, chaque complication (selon le nombre de cibles qu'elle
+// touche) et ce que l'équipement fourni ne couvre pas. Les points se
+// convertissent en note par une courbe qui sature : 1 pour une cible au choix,
+// 9 ou 10 pour un Puriste à trois accidents précis. C'est une estimation à
+// poids fixés, pas une mesure : rien ne dit d'où part la cible ni où est la noyade.
+struct SFacteurDifficulte {
+    enum class EType { Methode, Tenue, Complication, Pnj, ArmeATrouver } m_Type;
+    int m_Index = -1;      // dans Methodes(), STirage::m_Tenues ou Complications()
+    std::string m_Cible;   // la cible concernée ("" pour une complication)
+    double m_Points = 0.0;
+};
+
+struct SDifficulte {
+    double m_Points = 0.0;
+    int m_Note = 1;        // 1 à 10
+    std::vector<SFacteurDifficulte> m_Facteurs; // du plus lourd au plus léger
+};
+
+// p_Fournis : ce que l'équipement imposé apporte, sous la forme des catégories
+// de méthode (« pistol », « explosive », « fiberwire »…) ; p_ArmePermise : faux
+// si l'entrée n'admet pas d'arme dissimulée (une arme à feu est alors à trouver).
+SDifficulte EvaluerDifficulte(const STirage& p_Tirage, const std::set<std::string>& p_Fournis, bool p_ArmePermise);
 
 // Départ de la mission (valeur de « ContractStart ») : l'arme et l'objet imposés
 // sont-ils dans l'équipement emporté ? Rend vrai si un état a changé.

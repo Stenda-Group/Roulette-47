@@ -1,6 +1,7 @@
 #include "Fenetre.h"
 
 #include <string>
+#include <vector>
 
 #include <dcomp.h>
 #include <windowsx.h>
@@ -151,6 +152,58 @@ namespace {
     WNDPROC g_ProcJeu = nullptr;
     HWND g_FenetreInterceptee = nullptr;
 
+    // ---------------------------------------------------------------- Souris retenue
+    //
+    // Fiche ouverte en mission, la souris déplacée sur la fiche faisait
+    // tourner la vue de 47 (Julien, 25/11/2026) : le jeu, gardé actif, lit la
+    // souris brute (DirectInput, par une fenêtre cachée à lui) où que soit le
+    // curseur. Filtrer WM_INPUT sur la fenêtre du jeu n'y changeait rien (essai
+    // du 25/11/2026 : aucun message). Tant que la fiche est ouverte, le mod
+    // retire donc l'abonnement du processus à la souris brute, et le rend
+    // tel quel à la fermeture. Le clavier n'est pas touché (une touche tenue
+    // à l'ouverture resterait enfoncée).
+    std::vector<RAWINPUTDEVICE> g_SourisRetiree;
+
+    std::string ClasseFenetre(HWND h) {
+        if (!h) return "aucune";
+        wchar_t s_Nom[64] = {};
+        GetClassNameW(h, s_Nom, 64);
+        std::string s;
+        for (const wchar_t* c = s_Nom; *c; ++c) s += static_cast<char>(*c < 128 ? *c : '?');
+        return s;
+    }
+
+    void RetirerSouris() {
+        if (!g_SourisRetiree.empty()) return;
+        UINT n = 0;
+        GetRegisteredRawInputDevices(nullptr, &n, sizeof(RAWINPUTDEVICE));
+        std::vector<RAWINPUTDEVICE> s_Liste(n);
+        if (n == 0 || GetRegisteredRawInputDevices(s_Liste.data(), &n, sizeof(RAWINPUTDEVICE)) == static_cast<UINT>(-1)) {
+            static bool s_Dit = false;
+            if (!s_Dit) Diag("Interface : aucune entrée brute enregistrée par le jeu, la souris n'est pas retenue.");
+            s_Dit = true;
+            return;
+        }
+
+        static bool s_Releve = false;
+        for (const auto& d : s_Liste) {
+            if (!s_Releve) Diag("Interface : entrée brute du jeu {:02X}/{:02X}, drapeaux {:08X}, fenêtre « {} ».", d.usUsagePage, d.usUsage,
+                                d.dwFlags, ClasseFenetre(d.hwndTarget));
+            if (d.usUsagePage != 0x01 || d.usUsage != 0x02) continue;
+            RAWINPUTDEVICE s_Retrait { d.usUsagePage, d.usUsage, RIDEV_REMOVE, nullptr };
+            if (RegisterRawInputDevices(&s_Retrait, 1, sizeof(s_Retrait))) g_SourisRetiree.push_back(d);
+            else Diag("Interface : retrait de la souris brute refusé ({}).", GetLastError());
+        }
+        s_Releve = true;
+    }
+
+    void RendreSouris() {
+        for (const auto& d : g_SourisRetiree) {
+            if (!RegisterRawInputDevices(&d, 1, sizeof(d))) Diag("Interface : souris brute NON rendue au jeu ({}).", GetLastError());
+        }
+        g_SourisRetiree.clear();
+    }
+
     LRESULT CALLBACK ProcJeu(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         if (msg == WM_ACTIVATEAPP && wp == FALSE && g_GarderJeuActif) {
             return 0;
@@ -202,6 +255,7 @@ namespace {
             // Contrat rompu : on laisse le jeu se mettre en pause (son menu pause
             // est le chemin vers « Recommencer »).
             g_GarderJeuActif = g_FenetreInterceptee != nullptr && !*e.m_Rompu;
+            if (g_GarderJeuActif) RetirerSouris();
 
             // Le jeu bride le curseur à sa fenêtre : on le libère le temps de la fiche.
             ClipCursor(nullptr);
@@ -213,6 +267,7 @@ namespace {
         else {
             if (s_Jeu && !p_PerteDeFocus && GetForegroundWindow() == e.m_Hwnd) SetForegroundWindow(s_Jeu);
             g_GarderJeuActif = false;
+            RendreSouris();
 
             // Alt+Tab pendant la fiche : le jeu n'a jamais su qu'il perdait le
             // focus (message avalé) ; on le lui dit, sinon il garderait la souris.

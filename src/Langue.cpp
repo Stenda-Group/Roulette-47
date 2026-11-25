@@ -84,6 +84,9 @@ namespace {
 
             // ---------------------------------------------------- Divers
             { "costume47", { "Costume de 47", "Agent 47's suit", "Completo di 47", "Traje de 47", "Костюм 47" } },
+            { "costume.du_jeu", { "Costume de la mission", "Mission's suit", "Completo della missione", "Traje de la misión", "Костюм миссии" } },
+            { "diff.pnj", { "Cible hors contrat", "Off-contract target", "Bersaglio fuori contratto", "Objetivo fuera de contrato", "Цель вне контракта" } },
+            { "diff.arme", { "Arme à trouver sur place", "Weapon to find on site", "Arma da trovare sul posto", "Arma que encontrar allí", "Оружие найти на месте" } },
             { "cible", { "Cible", "Target", "Bersaglio", "Objetivo", "Цель" } },
             { "detail.methode", { "Méthode : %s", "Method: %s", "Metodo: %s", "Método: %s", "Способ: %s" } },
             { "detail.tenue", { "mauvaise tenue", "wrong outfit", "travestimento sbagliato", "disfraz equivocado", "не та маскировка" } },

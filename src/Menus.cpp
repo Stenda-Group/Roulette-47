@@ -297,6 +297,31 @@ bool LireInventaire(const json& p_Reponse, std::vector<SObjetInventaire>& p_Obje
     return true;
 }
 
+std::vector<SObjetInventaire> LireCostumes(const json& p_Reponse, const Traducteur& p_Traduire) {
+    std::vector<SObjetInventaire> s_Costumes;
+    const auto& s_Liste = Chemin(p_Reponse, { "Inventory" });
+    if (!s_Liste.is_array()) return s_Costumes;
+
+    std::set<std::string> s_Vus;
+    for (const auto& i : s_Liste) {
+        const auto& U = Chemin(i, { "Unlockable" });
+        const auto& P = Chemin(U, { "Properties" });
+        if (Txt(P, "LoadoutSlot") != "disguise") continue;
+
+        SObjetInventaire o;
+        o.m_Emplacement = "disguise";
+        o.m_Id = Bas(Txt(P, "RepositoryId"));
+        o.m_IdJeu = Txt(U, "Id");
+        o.m_SousType = Txt(U, "Subtype");
+        o.m_CleNom = Txt(U, "DisplayNameLocKey");
+        if (o.m_Id.empty() || o.m_IdJeu.empty() || !s_Vus.insert(o.m_Id).second) continue;
+        o.m_Nom = Traduit(p_Traduire, o.m_CleNom, o.m_IdJeu);
+        o.m_Brut = i;
+        s_Costumes.push_back(std::move(o));
+    }
+    return s_Costumes;
+}
+
 std::vector<SEntree> LireEntreesPossedees(const json& p_Reponse, const Traducteur& p_Traduire) {
     std::vector<SEntree> s_Entrees;
     const auto& s_Liste = Chemin(p_Reponse, { "Inventory" });
@@ -774,6 +799,7 @@ bool ImposerPlanification(json& p_Page, const SPreparation& p_Preparation) {
             const SImpose* s_Impose = nullptr;
 
             if (s_Nom == "concealedweapon") s_Impose = &p_Preparation.m_Arme;
+            else if (s_Nom == "disguise") s_Impose = &p_Preparation.m_Costume;
             else if (s_Nom == "gear" && s_Gears < 2) {
                 s_Impose = s_Gears == 0 ? &p_Preparation.m_Objet : &p_Preparation.m_Objet2;
                 ++s_Gears;
@@ -966,7 +992,7 @@ bool AjouterEquipementObligatoire(json& p_Contrat, const SPreparation& p_Prepara
     if (!p_Contrat.is_object() || !p_Contrat.contains("Data") || !p_Contrat["Data"].is_object()) return false;
 
     json s_Liste = json::array();
-    for (const auto* s : { &p_Preparation.m_Arme, &p_Preparation.m_Objet, &p_Preparation.m_Objet2 }) {
+    for (const auto* s : { &p_Preparation.m_Arme, &p_Preparation.m_Objet, &p_Preparation.m_Objet2, &p_Preparation.m_Costume }) {
         if (s->Vide() || s->m_IdJeu.empty()) continue;
         s_Liste.push_back({ { "Id", s->m_IdJeu }, { "Properties", { { "LoadoutSlot", s->m_Emplacement }, { "RepositoryId", s->m_Id } } } });
     }

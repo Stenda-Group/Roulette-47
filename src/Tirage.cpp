@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 
 #include "Depot.h"
 #include "Langue.h"
@@ -530,4 +531,102 @@ std::string CleNom(const std::string& p_Nom) {
     }
 
     return s_Cle;
+}
+
+// ---------------------------------------------------------------- Difficulté
+
+namespace {
+    // Le coût d'une méthode, sans rien de fourni. « Au choix » ne coûte rien.
+    double PointsMethode(std::string_view p_Cle) {
+        static const std::pair<const char*, double> c_Poids[] = {
+            { "accident", 1.0 },       { "noyade", 1.8 },        { "chute", 1.5 },          { "electrocution", 2.0 },
+            { "objet_suspendu", 1.9 }, { "brulure", 2.2 },       { "explosion_accident", 1.7 },
+            { "poison", 0.9 },         { "poison_ingere", 1.5 }, { "poison_injecte", 1.1 },
+            { "pistolet", 0.8 },       { "pm", 1.3 },            { "pompe", 1.5 },          { "assaut", 1.3 },
+            { "precision", 1.7 },      { "explosif", 1.2 },
+            { "corde", 0.7 },          { "mains_nues", 1.0 },    { "melee", 0.9 },
+        };
+        for (const auto& [s_Cle, s_Points] : c_Poids) {
+            if (p_Cle == s_Cle) return s_Points;
+        }
+        return 1.0;
+    }
+
+    // Une méthode qui tient à la scène (accident précis, poison à faire avaler) :
+    // plus dure sur un PNJ, qui ne passe pas forcément près d'une occasion.
+    bool DependDeLaScene(std::string_view p_Cle) {
+        return p_Cle == "noyade" || p_Cle == "chute" || p_Cle == "electrocution" || p_Cle == "objet_suspendu" ||
+               p_Cle == "brulure" || p_Cle == "explosion_accident" || p_Cle == "poison_ingere";
+    }
+}
+
+SDifficulte EvaluerDifficulte(const STirage& p_Tirage, const std::set<std::string>& p_Fournis, bool p_ArmePermise) {
+    SDifficulte d;
+    if (!p_Tirage.m_Valide || p_Tirage.m_Cibles.empty()) return d;
+
+    using EType = SFacteurDifficulte::EType;
+    const auto& s_Methodes = Methodes();
+    const auto n = static_cast<double>(p_Tirage.m_Cibles.size());
+    int s_ArmesAFeu = 0, s_Deguisements = 0;
+
+    const auto Ajouter = [&d](EType p_Type, int p_Index, const std::string& p_Cible, double p_Points) {
+        if (p_Points <= 0.0) return;
+        d.m_Points += p_Points;
+        d.m_Facteurs.push_back({ p_Type, p_Index, p_Cible, p_Points });
+    };
+
+    for (const auto& c : p_Tirage.m_Cibles) {
+        d.m_Points += 1.0; // la cible elle-même
+        if (!c.m_Officielle) Ajouter(EType::Pnj, -1, c.m_Nom, 0.4);
+
+        if (c.m_Methode >= 0 && c.m_Methode < static_cast<int>(s_Methodes.size())) {
+            const auto& m = s_Methodes[c.m_Methode];
+            double s_Points = PointsMethode(m.m_Cle);
+            // Ce que l'équipement apporte (le pistolet de l'Assassin, la corde)
+            // coûte moitié moins : il n'y a plus qu'à approcher.
+            const bool s_Fourni = (*m.m_Large && p_Fournis.contains(m.m_Large)) || (*m.m_Stricte && p_Fournis.contains(m.m_Stricte));
+            if (s_Fourni) s_Points *= 0.5;
+            if (!c.m_Officielle && DependDeLaScene(m.m_Cle)) s_Points *= 1.5;
+            Ajouter(EType::Methode, c.m_Methode, c.m_Nom, s_Points);
+
+            if (EstArmeAFeu(std::string(m.m_Large))) {
+                ++s_ArmesAFeu;
+                if (!s_Fourni && !p_ArmePermise) Ajouter(EType::ArmeATrouver, c.m_Methode, c.m_Nom, 0.6);
+            }
+        }
+
+        if (c.m_Tenue >= 0 && c.m_Tenue < static_cast<int>(p_Tirage.m_Tenues.size())) {
+            const bool s_Costume = p_Tirage.m_Tenues[c.m_Tenue].m_EstCostume;
+            if (!s_Costume) ++s_Deguisements;
+            // Une méthode ET une tenue sur la même cible : les deux se cumulent.
+            const double s_Points = (s_Costume ? 0.5 : 0.9) * (c.m_Methode >= 0 ? 1.15 : 1.0);
+            Ajouter(EType::Tenue, c.m_Tenue, c.m_Nom, s_Points);
+        }
+    }
+
+    for (const auto& s_Tiree : p_Tirage.m_Complications) {
+        if (s_Tiree.m_Index < 0 || s_Tiree.m_Index >= static_cast<int>(Complications().size())) continue;
+        const std::string_view s_Cle = Complications()[s_Tiree.m_Index].m_Cle;
+        double s_Points = 0.6;
+        if (s_Cle == "sans_etre_repere") s_Points = 1.2 + 0.4 * n;
+        else if (s_Cle == "aucun_corps") s_Points = 0.8 + 0.2 * n;
+        else if (s_Cle == "aucune_victime") s_Points = 0.7;
+        // Sans neutraliser personne, une tenue imposée est à trouver ailleurs.
+        else if (s_Cle == "aucune_neutralisation") s_Points = 1.0 + 0.6 * s_Deguisements;
+        else if (s_Cle == "aucun_changement") s_Points = 0.9;
+        else if (s_Cle == "aucun_enregistrement") s_Points = 0.8;
+        else if (s_Cle == "tirs_tete") s_Points = s_ArmesAFeu ? 0.6 * s_ArmesAFeu : 0.1;
+        else if (s_Cle == "ordre_impose") s_Points = 0.3 + 0.5 * (n - 1.0);
+        Ajouter(EType::Complication, s_Tiree.m_Index, {}, s_Points);
+    }
+
+    // 1 + 9 × (1 − e^(−(points − 1) / 9)) : une cible seule et libre vaut 1, la
+    // note monte vite au début puis sature vers 10. Réglé le 25/11/2026 sur un
+    // contrat de Sgàil (trois PNJ en costume, pistolet et corde fournis) que
+    // l'ancienne courbe (÷ 8, costume à 0,7) mettait à 7 : il en vaut 6.
+    const double s_Note = 1.0 + 9.0 * (1.0 - std::exp(-(std::max(d.m_Points, 1.0) - 1.0) / 9.0));
+    d.m_Note = std::clamp(static_cast<int>(std::lround(s_Note)), 1, 10);
+
+    std::ranges::stable_sort(d.m_Facteurs, [](const auto& a, const auto& b) { return a.m_Points > b.m_Points; });
+    return d;
 }

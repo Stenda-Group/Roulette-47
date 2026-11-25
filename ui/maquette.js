@@ -64,6 +64,10 @@
         { nom: 'Janus', image: 'images/actors/Skunk_Janus.jpg', methode: methode('electrocution'), tenue: COSTUME },
       ],
       complications: [COMPLICATIONS.aucun_corps],
+      // EvaluerDifficulte (Tirage.cpp) appliqué à ce contrat : 6,8 points.
+      difficulte: { note: 5, points: 6.8, facteurs: [
+        { texte: 'Électrocution', cible: 'Janus', points: 2 }, { texte: 'Aucun corps découvert', cible: '', points: 1.2 },
+        { texte: 'Costume de 47', cible: 'Nolan Cassidy', points: 0.6 }] },
       preparation: {
         entree: { nom: 'Panneau de banlieue', image: 'images/entrances/skunk_entrance_granny.jpg' },
         arme: { nom: 'HWK 21 Camouflage' },
@@ -76,6 +80,9 @@
         mission: { titre: 'Fin d\'une ère', image: 'images/contracts/rat/rat_tile.jpg' } },
       cibles: [{ nom: 'Hush', image: 'images/actors/Wet_Hush.jpg', methode: methode('noyade'), tenue: COSTUME }],
       complications: [COMPLICATIONS.aucun_corps],
+      difficulte: { note: 4, points: 4.4, facteurs: [
+        { texte: 'Noyade', cible: 'Hush', points: 1.8 }, { texte: 'Aucun corps découvert', cible: '', points: 1 },
+        { texte: 'Costume de 47', cible: 'Hush', points: 0.6 }] },
       preparation: {
         entree: { nom: 'Le bloc', image: 'images/entrances/Wet_Entrance_Block_Security.jpg' },
         arme: { nom: 'ICA19 Shortballer' },
@@ -125,6 +132,9 @@
       cibles: c.cibles.map((x) => ({ ...x, etat: 'en_cours', officielle: true })),
       complications: c.complications.map((x) => ({ ...x, etat: 'en_cours' })),
       preparation: c.preparation,
+      difficulte: c.difficulte,
+      costumeDepart: { id: '', nom: 'Costume de la mission', image: '' },
+      lancement: null,
       etat: 'propose', enMission: false, relancePossible: true, dansLeContrat: false, rompu: false,
     });
     etat.tirage++;
@@ -143,7 +153,11 @@
   roulette.local = (m) => {
     if (m.action === 'prete') { pousser(); return; }
     if (m.action === 'tirer' || (m.action === 'relancer' && etat.relancePossible)) poserContrat();
-    if (m.action === 'accepter' && etat.etat === 'propose') etat.etat = 'accepte';
+    if (m.action === 'accepter' && etat.etat === 'propose') {
+      // Comme le mod : écran de chargement, puis préparation ouverte 3 s plus tard.
+      Object.assign(etat, { etat: 'accepte', lancement: 'attente' });
+      setTimeout(() => { etat.lancement = 'prete'; pousser(); }, 3000);
+    }
     if (m.action === 'refuser') oublier();
     if (m.action === 'fermer') etat.ouverte = false;
     if (m.action === 'reglage') {
@@ -165,7 +179,8 @@
     ['Accueil', oublier],
     ['Lancer la mission', () => {
       if (!etat.cibles.length) poserContrat();
-      Object.assign(etat, { etat: 'en_cours', enMission: true, dansLeContrat: true, relancePossible: false });
+      Object.assign(etat, { etat: 'en_cours', enMission: true, dansLeContrat: true, relancePossible: false,
+        costumeDepart: null, lancement: null });
       etat.preparation.arme.etat = 'reussi';
       etat.preparation.objet.etat = 'reussi';
     }],

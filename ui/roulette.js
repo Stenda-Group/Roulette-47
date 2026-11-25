@@ -439,10 +439,111 @@ const roulette = (() => {
     return n;
   }
 
+  // Le costume de départ : la seule pièce de la préparation que le joueur
+  // choisit (Julien, 25/11/2026 : sans effet sur le contrat).
+  function ligneCostume() {
+    const c = etat.costumeDepart;
+    if (!c) return null;
+    const n = el('button', 'prep prep--choix');
+    const image = el('div', 'prep__image');
+    image.append(icone('i-costume'));
+    if (c.image) poserImage(image, c.image, () => image.replaceChildren());
+    const textes = el('div');
+    textes.append(el('div', 'prep__titre', t('costume_depart')), el('div', 'prep__valeur', c.nom));
+    n.append(image, textes, el('span', 'prep__changer', t('costume_changer')));
+    n.onclick = ouvrirVestiaire;
+    return n;
+  }
+
+  let filtreVestiaire = '';
+
+  function ouvrirVestiaire() {
+    son.clic();
+    filtreVestiaire = '';
+    $('vestiaire-recherche').value = '';
+    $('vestiaire').hidden = false;
+    envoyer({ action: 'costumes' });
+    rendreVestiaire();
+    $('vestiaire-recherche').focus();
+  }
+
+  function fermerVestiaire() { $('vestiaire').hidden = true; }
+
+  function rendreVestiaire() {
+    const grille = $('vestiaire-grille');
+    const defile = grille.scrollTop;
+    grille.replaceChildren();
+    const choisi = etat.costumeDepart ? etat.costumeDepart.id : '';
+    const f = filtreVestiaire.trim().toLocaleLowerCase(langue);
+    const choisir = (id) => { son.clic(); envoyer({ action: 'costume', id }); fermerVestiaire(); };
+
+    if (!f) {
+      const defaut = el('button', 'costume costume--defaut' + (choisi ? '' : ' costume--choisi'));
+      defaut.append(icone('i-costume'), el('span', 'costume__nom', t('costume_du_jeu')));
+      defaut.onclick = () => choisir('');
+      grille.append(defaut);
+    }
+    (etat.costumes || [])
+      .filter((c) => !f || c.nom.toLocaleLowerCase(langue).includes(f))
+      .sort((a, b) => a.nom.localeCompare(b.nom, langue))
+      .forEach((c) => {
+        const b = el('button', 'costume' + (c.id === choisi ? ' costume--choisi' : ''));
+        b.title = c.nom;
+        b.append(el('span', 'costume__nom', c.nom));
+        if (c.image) poserImage(b, c.image);
+        b.onclick = () => choisir(c.id);
+        grille.append(b);
+      });
+    grille.scrollTop = defile;
+  }
+
+  $('vestiaire-fermer').onclick = fermerVestiaire;
+  $('vestiaire-recherche').oninput = (e) => { filtreVestiaire = e.target.value; rendreVestiaire(); };
+
+  // ---------------------------------------------------------------- Difficulté
+
+  function niveauDifficulte(note) { return note <= 2 ? 1 : note <= 4 ? 2 : note <= 6 ? 3 : note <= 8 ? 4 : 5; }
+
+  function rendreDifficulte(animer, apres) {
+    const d = etat.difficulte;
+    $('bloc-difficulte').hidden = !d;
+    if (!d) return;
+    const niveau = niveauDifficulte(d.note);
+    const zone = $('difficulte');
+    zone.className = 'difficulte difficulte--' + niveau + (animer ? ' difficulte--entree' : '');
+    zone.title = t('diff_aide');
+    zone.replaceChildren();
+
+    const tete = el('div', 'difficulte__tete');
+    tete.append(el('span', 'difficulte__note', String(d.note)), el('span', 'difficulte__sur', '/ 10'),
+      el('span', 'difficulte__libelle', t('diff_' + niveau)));
+    const jauge = el('div', 'difficulte__jauge');
+    for (let i = 1; i <= 10; i++) {
+      const case_ = el('i', i <= d.note ? 'plein' : '');
+      if (animer) case_.style.animationDelay = (apres + i * 45) + 'ms';
+      jauge.append(case_);
+    }
+    zone.append(tete, jauge);
+
+    const facteurs = (d.facteurs || []).slice(0, 3);
+    if (facteurs.length) {
+      const liste = el('div', 'difficulte__facteurs');
+      liste.append(el('div', 'prep__titre', t('diff_poids')));
+      facteurs.forEach((f) => {
+        const ligne = el('div', 'difficulte__facteur');
+        ligne.append(el('b', '', f.texte));
+        if (f.cible) ligne.append(el('span', '', '· ' + f.cible));
+        liste.append(ligne);
+      });
+      zone.append(liste);
+    }
+  }
+
   function lignesPreparation() {
     const p = etat.preparation;
-    if (!p) return [];
-    return [[t('lieu_depart'), p.entree, 'i-porte'], [t('arme_dissimulee'), p.arme, 'i-Armes'], [t('equipement'), p.objet, 'i-sac'],
+    const costume = ligneCostume();
+    if (!p) return costume ? [costume] : [];
+    const lignes = [[t('lieu_depart'), p.entree, 'i-porte'], [t('arme_dissimulee'), p.arme, 'i-Armes'], [t('equipement'), p.objet, 'i-sac'],
       [t('equipement'), p.objet2, 'i-sac']]
       .filter(([, objet]) => objet)
       .map(([titre, objet, idIcone]) => {
@@ -457,6 +558,8 @@ const roulette = (() => {
         n.append(image, textes);
         return n;
       });
+    if (costume) lignes.splice(p.entree ? 1 : 0, 0, costume);
+    return lignes;
   }
 
   // Tout le contrat. Animé : la destination roule, puis les cibles arrivent
@@ -495,6 +598,8 @@ const roulette = (() => {
       if (animer) { n.classList.add('complication--entree'); n.style.animationDelay = (apres + j * 120) + 'ms'; }
       compl.append(n);
     });
+
+    rendreDifficulte(animer, apres);
 
     const prep = $('preparation');
     prep.replaceChildren();
@@ -602,7 +707,8 @@ const roulette = (() => {
 
     const signature = JSON.stringify(etat.cibles.map((c) => [c.nom, c.methode, c.tenue])) + '|' + etat.tirage;
     const etats = JSON.stringify([etat.cibles.map((c) => [c.etat, c.detail]), etat.complications.map((c) => c.etat),
-      etat.etat, etat.preparation, etat.rompu, etat.destination && etat.destination.nom]);
+      etat.etat, etat.preparation, etat.rompu, etat.destination && etat.destination.nom, etat.costumeDepart,
+      etat.difficulte && etat.difficulte.note]);
     const nouveauTirage = signature !== dernierTirage;
 
     // On anime un contrat qui vient d'être tiré SOUS LES YEUX (fiche ouverte).
@@ -628,6 +734,13 @@ const roulette = (() => {
       annulerAnimations();
     }
 
+    // Le sélecteur de costume suit l'état (images arrivées, contrat parti).
+    if (!$('vestiaire').hidden) {
+      if (!etat.ouverte || !etat.costumeDepart) fermerVestiaire();
+      else if (etat.images !== dernieresImages) rendreVestiaire();
+    }
+    suivreLancement();
+
     dernierTirage = signature;
     dernierEtats = etats;
     dernieresImages = etat.images;
@@ -635,14 +748,56 @@ const roulette = (() => {
 
   }
 
+  // ---------------------------------------------------------------- Lancement
+  //
+  // Contrat accepté : le mod ouvre la préparation, qui met quelques secondes à
+  // venir (Julien, 25/11/2026). La fiche montre la roue jusqu'à ce que le mod
+  // dise « prete », puis se ferme. Si rien ne vient en 30 s, elle se ferme
+  // quand même : le jeu est peut-être déjà sur la page.
+  let lancementVu = false;
+  let fermetureLancement = null;
+  let limiteLancement = null;
+
+  function suivreLancement() {
+    const l = etat.lancement;
+    if (!etat.ouverte || !l) lancementVu = false;
+    else if (l === 'attente') lancementVu = true;
+
+    const montrer = lancementVu && (l === 'attente' || l === 'prete');
+    $('chargement').hidden = !montrer;
+    if (montrer) {
+      const d = etat.destination;
+      $('chargement-detail').textContent = [d ? d.nom : etat.mission.lieu, d && d.mission ? d.mission.titre : etat.mission.titre]
+        .filter(Boolean).join(' — ');
+    }
+
+    if (l === 'attente' && lancementVu && !limiteLancement) {
+      limiteLancement = setTimeout(() => {
+        limiteLancement = null;
+        if (etat.lancement === 'attente' && lancementVu) { lancementVu = false; $('chargement').hidden = true; envoyer({ action: 'fermer' }); }
+      }, 30000);
+    }
+    if (l !== 'attente' && limiteLancement) { clearTimeout(limiteLancement); limiteLancement = null; }
+
+    if (l === 'prete' && lancementVu && !fermetureLancement) {
+      fermetureLancement = setTimeout(() => {
+        fermetureLancement = null;
+        lancementVu = false;
+        $('chargement').hidden = true;
+        envoyer({ action: 'fermer' });
+      }, 600);
+    }
+  }
+
   // ---------------------------------------------------------------- Boutons
 
   $('btn-tirer').onclick = () => { son.clic(); envoyer({ action: 'tirer' }); };
   $('btn-accepter').onclick = () => {
     son.tampon();
+    fermerVestiaire();
     envoyer({ action: 'accepter' });
-    // Le mod mène ensuite les menus : la fiche se ferme d'elle-même.
-    if (etat.reglages.pilote) setTimeout(() => envoyer({ action: 'fermer' }), 900);
+    // Le mod mène ensuite les menus : la fiche montre l'écran de chargement
+    // (suivreLancement) et se ferme quand la préparation est ouverte.
   };
   $('btn-refuser').onclick = () => { son.refus(); envoyer({ action: 'refuser' }); };
   $('btn-relancer').onclick = () => { son.clic(); envoyer({ action: 'relancer' }); };
@@ -683,6 +838,7 @@ const roulette = (() => {
   });
 
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('vestiaire').hidden) { fermerVestiaire(); return; }
     if (e.key === 'Escape' && !(etat && etat.rompu)) envoyer({ action: 'fermer' });
   });
 

@@ -10,7 +10,7 @@ import sys
 import urllib.parse
 
 RACINE = pathlib.Path(__file__).resolve().parent.parent / "ui"
-CACHE = pathlib.Path(r"C:\Program Files (x86)\Steam\steamapps\common\HITMAN 3\Retail\Roulette\cache")
+CACHE = pathlib.Path(r"C:\Program Files (x86)\Steam\steamapps\common\HITMAN 3\Retail\Roulette47\cache")
 
 
 class Gestion(http.server.SimpleHTTPRequestHandler):

@@ -116,6 +116,9 @@ bool LireMissions(const nlohmann::json& p_Page, std::vector<SDestination>& p_Des
 // Réponse d'inventaire (« Inventory » en tête) : armes dissimulées et équipement.
 bool LireInventaire(const nlohmann::json& p_Reponse, std::vector<SObjetInventaire>& p_Objets, const Traducteur& p_Traduire);
 
+// La même réponse : les costumes de 47 possédés (emplacement « disguise »).
+std::vector<SObjetInventaire> LireCostumes(const nlohmann::json& p_Reponse, const Traducteur& p_Traduire);
+
 // La même réponse : les entrées possédées (« startinglocation »), avec leur lieu.
 std::vector<SEntree> LireEntreesPossedees(const nlohmann::json& p_Reponse, const Traducteur& p_Traduire);
 

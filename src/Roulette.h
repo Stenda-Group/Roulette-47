@@ -166,6 +166,18 @@ private:
     std::atomic<int> m_PagesEntrees = 0;
     std::string m_EtatPilote;                    // ce que le pilote dit à la fiche
     bool m_Prepare = false;                      // accepté : il attend sa mission
+    // Écran de chargement de la fiche après « Accepter » (Julien, 25/11/2026 :
+    // la préparation ne s'ouvre pas tout de suite) : le compte des pages de
+    // préparation à l'acceptation ; -1 = aucun lancement en cours.
+    std::atomic<int> m_PagesPrepAuLancement = -1;
+    // Les costumes de 47 possédés (emplacement « disguise » de l'inventaire) :
+    // la tenue de départ reste au choix du joueur, sans effet sur le jeu.
+    std::vector<SObjetInventaire> m_Costumes;
+    void ChoisirCostume(const std::string& p_Id); // sous verrou ; "" = celui du jeu
+    void AppliquerCostume(SPreparation& p_Preparation); // sous verrou : le costume retenu, si l'entrée le permet
+    [[nodiscard]] bool EntreeEnCostume(const SPreparation& p_Preparation) const; // sous verrou
+    std::string m_IdCostumeChoisi;   // roulette47.ini, « costume_depart » ("" = celui du jeu)
+    bool m_ImagesCostumesDemandees = false;
 
     bool m_TirageInjecte = false;    // tirage écrit dans le contrat du jeu : figé jusqu'à la fin
     bool m_Rompu = false;            // contrat rompu : la mission est à recommencer

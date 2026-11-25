@@ -91,6 +91,38 @@ namespace {
         return s_Propre;
     }
 
+    // Le nom d'un costume de 47 quand le jeu n'a pas chargé son texte (aux
+    // menus, ceux des costumes ne le sont jamais : essai du 25/11/2026), tiré
+    // du nom de travail du dépôt : « CHAR_Agent47_Hero_Summer_Suit_M » →
+    // « Summer Suit », « CHAR_EG04_Reward_Hero_DLC_C_M » → « EG04 DLC C ».
+    std::string NomCostume(const std::string& p_Brut) {
+        static const char* c_Ignores[] = { "char", "agent47", "hero", "reward", "token", "outfit", "m", "f" };
+        std::string s_Nom, s_Mot;
+        const auto Finir = [&] {
+            if (s_Mot.empty()) return;
+            std::string s_Bas = s_Mot;
+            for (auto& c : s_Bas) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+            const bool s_Ignore = std::ranges::any_of(c_Ignores, [&](const char* x) { return s_Bas == x; });
+            // Numéros de fabrication : PRO183034, HPA2793.
+            const bool s_Fabrication = (s_Bas.rfind("pro", 0) == 0 || s_Bas.rfind("hpa", 0) == 0) && s_Bas.size() > 3 &&
+                                       std::all_of(s_Bas.begin() + 3, s_Bas.end(), [](char c) { return c >= '0' && c <= '9'; });
+            if (!s_Ignore && !s_Fabrication) {
+                const bool s_Sigle = s_Mot.size() <= 4 && std::ranges::any_of(s_Mot, [](char c) { return c >= '0' && c <= '9'; });
+                std::string s_Propre = s_Sigle || (s_Mot.size() <= 3 && std::ranges::all_of(s_Mot, [](char c) { return c >= 'A' && c <= 'Z'; }))
+                                           ? s_Mot : s_Bas;
+                if (!s_Sigle) s_Propre[0] = static_cast<char>(toupper(static_cast<unsigned char>(s_Propre[0])));
+                s_Nom += (s_Nom.empty() ? "" : " ") + s_Propre;
+            }
+            s_Mot.clear();
+        };
+        for (const char c : p_Brut) {
+            if (c == '_' || c == ' ') Finir();
+            else s_Mot += c;
+        }
+        Finir();
+        return s_Nom.empty() ? NomNettoye(p_Brut) : s_Nom;
+    }
+
     // Dernier recours en français pour l'équipement de 47, dont le nom du jeu
     // n'est pas encore connu.
     const char* NomGenerique(const std::string& p_IdJeu) {
@@ -155,7 +187,7 @@ void Roulette::ReprendreAncienDossier() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.17 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v0.18 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
 
     if (!Moteur::Resoudre()) {
@@ -248,6 +280,14 @@ void Roulette::ChargerReglages() {
     m_DiscordActif = Lire(L"discord", 1) != 0;
     {
         wchar_t s_Id[64] = {};
+        GetPrivateProfileStringW(L"roulette", L"costume_depart", L"", s_Id, 64, s_Fichier.c_str());
+        m_IdCostumeChoisi.clear();
+        for (const wchar_t* c = s_Id; *c; ++c) {
+            if ((*c >= L'0' && *c <= L'9') || (*c >= L'a' && *c <= L'f') || *c == L'-') m_IdCostumeChoisi += static_cast<char>(*c);
+        }
+    }
+    {
+        wchar_t s_Id[64] = {};
         GetPrivateProfileStringW(L"roulette", L"discord_app", L"", s_Id, 64, s_Fichier.c_str());
         m_IdDiscord.clear();
         for (const wchar_t* c = s_Id; *c; ++c) if (*c >= L'0' && *c <= L'9') m_IdDiscord += static_cast<char>(*c);
@@ -331,6 +371,14 @@ void Roulette::EnregistrerReglages() {
     Ecrire(L"imposer_preparation", s_R.m_ImposerPreparation);
     Ecrire(L"cibles_du_jeu", s_R.m_CiblesDuJeuSeules);
     Ecrire(L"discord", m_DiscordActif);
+    {
+        std::wstring s_Costume;
+        {
+            std::lock_guard s_Verrou(m_Verrou);
+            s_Costume = Large(m_IdCostumeChoisi);
+        }
+        WritePrivateProfileStringW(L"roulette", L"costume_depart", s_Costume.c_str(), s_Fichier.c_str());
+    }
     {
         std::wstring s_Liste;
         {
@@ -675,10 +723,16 @@ bool Roulette::TraiterMenus(nlohmann::json& p_Reponse) {
     if (p_Reponse.contains("Inventory")) {
         std::vector<SObjetInventaire> s_Objets;
         auto s_Entrees = LireEntreesPossedees(p_Reponse, s_Traduire);
+        auto s_Costumes = LireCostumes(p_Reponse, s_Traduire);
         if (LireInventaire(p_Reponse, s_Objets, s_Traduire)) {
             std::lock_guard s_Verrou(m_Verrou);
             m_Inventaire = std::move(s_Objets);
             m_EntreesPossedees = std::move(s_Entrees);
+            if (!s_Costumes.empty()) {
+                m_Costumes = std::move(s_Costumes);
+                m_ImagesCostumesDemandees = false;
+                Diag("Inventaire : {} costume(s) de 47 possédé(s).", m_Costumes.size());
+            }
             Diag("Inventaire lu : {} arme(s) dissimulée(s) et équipement(s), {} entrée(s).", m_Inventaire.size(), m_EntreesPossedees.size());
         }
         return false;
@@ -937,8 +991,16 @@ bool Roulette::PreparerAvantMission(nlohmann::json& p_Page) {
             for (const auto& e : *s_Entrees) {
                 const auto& P = e.contains("Properties") && e["Properties"].is_object() ? e["Properties"] : nlohmann::json::object();
                 if (EnMinuscules(ChampTexte(P, "RepositoryId")) != m_TiragePrepare.m_Preparation.m_Entree.m_Id) continue;
-                const auto s_Equip = P.contains("Equip") && P["Equip"].is_array() ? P["Equip"] : nlohmann::json::array();
-                Moteur::ImposerEntree(m_TiragePrepare.m_Preparation.m_Entree.m_Id, s_Equip.dump(), e.dump());
+                auto s_Equip = P.contains("Equip") && P["Equip"].is_array() ? P["Equip"] : nlohmann::json::array();
+                auto s_Entree = e;
+                // Le costume choisi par le joueur remplace celui de l'entrée
+                // (une entrée « en costume » : aucune tenue, ou une tenue HERO).
+                if (const auto& c = m_TiragePrepare.m_Preparation.m_Costume; !c.Vide() && !c.m_IdJeu.empty()) {
+                    s_Equip = nlohmann::json::array({ c.m_IdJeu });
+                    if (s_Entree.contains("Properties") && s_Entree["Properties"].is_object()) s_Entree["Properties"]["Equip"] = s_Equip;
+                    Diag("Préparation : costume de départ « {} » ({}).", c.m_Nom, c.m_IdJeu);
+                }
+                Moteur::ImposerEntree(m_TiragePrepare.m_Preparation.m_Entree.m_Id, s_Equip.dump(), s_Entree.dump());
                 s_Trouvee = true;
                 break;
             }
@@ -1013,6 +1075,7 @@ void Roulette::TirerAvantMission() {
 
         t.m_Preparation = TirerPreparation(m_Planif, m_Inventaire, t, m_Reglages.m_Mode, m_Hasard, s_Jetons);
         CompleterImposes(t.m_Preparation);
+        AppliquerCostume(t.m_Preparation);
         if (!s_Jetons.empty()) Diag("Freestyle : entrée dans la tenue d'une cible possible ({} jeton(s)), entrée « {} ».",
                                     s_Jetons.size(), t.m_Preparation.m_Entree.m_Nom);
 
@@ -1278,6 +1341,7 @@ bool Roulette::ImporterContrat(const std::string& p_Code) {
     }
 
     t.m_Valide = true;
+    AppliquerCostume(t.m_Preparation);
     m_TiragePrepare = std::move(t);
     m_IdContratPrepare = m_Planif.m_IdContrat;
     ++m_NumeroTirage;
@@ -1385,8 +1449,49 @@ void Roulette::Piloter() {
     Dire(Tx("pilote.atteinte"), false);
 }
 
+bool Roulette::EntreeEnCostume(const SPreparation& p_Preparation) const {
+    if (p_Preparation.m_Entree.Vide()) return false;
+    for (const auto& e : m_Planif.m_Entrees) {
+        if (e.m_Id == p_Preparation.m_Entree.m_Id) return e.m_EnCostume;
+    }
+    return false;
+}
+
+void Roulette::AppliquerCostume(SPreparation& p_Preparation) {
+    p_Preparation.m_Costume = {};
+    if (m_IdCostumeChoisi.empty() || !EntreeEnCostume(p_Preparation)) return;
+
+    const auto s_It = std::ranges::find_if(m_Costumes, [this](const auto& o) { return o.m_Id == m_IdCostumeChoisi; });
+    if (s_It == m_Costumes.end()) return;
+
+    SImpose& c = p_Preparation.m_Costume;
+    c.m_Id = s_It->m_Id;
+    c.m_IdJeu = s_It->m_IdJeu;
+    c.m_Emplacement = "disguise";
+    c.m_Nom = s_It->m_Nom;
+    c.m_Cle = s_It->m_CleNom;
+    c.m_Brut = s_It->m_Brut;
+    if (const auto* e = m_Depot.Trouver(c.m_Id)) {
+        c.m_Image = e->m_Image;
+        if (c.m_Nom == c.m_IdJeu) c.m_Nom = NomCostume(e->m_NomCommun.empty() ? e->m_Nom : e->m_NomCommun);
+    }
+    if (m_Images) m_Images->Demander(c.m_Image);
+}
+
+void Roulette::ChoisirCostume(const std::string& p_Id) {
+    if (m_EnMission || !(m_Propose || m_Prepare)) return;
+    if (!p_Id.empty() && std::ranges::none_of(m_Costumes, [&](const auto& o) { return o.m_Id == p_Id; })) return;
+
+    m_IdCostumeChoisi = p_Id;
+    AppliquerCostume(m_TiragePrepare.m_Preparation);
+    m_Tirage.m_Preparation.m_Costume = m_TiragePrepare.m_Preparation.m_Costume;
+    Diag("Costume de départ : {}.", m_TiragePrepare.m_Preparation.m_Costume.Vide() ? std::string("celui du jeu")
+                                                                                     : m_TiragePrepare.m_Preparation.m_Costume.m_Nom);
+}
+
 void Roulette::OublierContrat() {
     Moteur::LibererEntree();
+    m_PagesPrepAuLancement = -1;
     m_Propose = false;
     m_Prepare = false;
     m_Tirage = {};
@@ -1483,6 +1588,9 @@ void Roulette::ApprendreNoms() {
     }
     for (auto& e : m_EntreesPossedees) {
         if (auto t = TraduireNom(e.m_CleNom, {}); !t.empty()) e.m_Nom = std::move(t);
+    }
+    for (auto& o : m_Costumes) {
+        if (auto t = TraduireNom(o.m_CleNom, o.m_Cle2); !t.empty()) o.m_Nom = std::move(t);
     }
     for (auto& e : m_Planif.m_Entrees) {
         if (auto t = TraduireNom(e.m_CleNom, {}); !t.empty()) e.m_Nom = std::move(t);
@@ -2380,6 +2488,14 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
     s_Etat["erreurCode"] = m_ErreurCode;
     s_Etat["avertissementCode"] = m_AvertissementCode;
     s_Etat["pilote"] = m_EtatPilote;
+    // « attente » : contrat accepté, préparation pas encore ouverte (écran de
+    // chargement) ; « prete » : elle vient de s'ouvrir, la fiche se ferme.
+    if (const int n = m_PagesPrepAuLancement.load(); n >= 0 && m_Prepare && !m_EnMission) {
+        s_Etat["lancement"] = m_PagesPrep.load() > n ? "prete" : "attente";
+    }
+    else {
+        s_Etat["lancement"] = nullptr;
+    }
     s_Etat["piloteEnCours"] = m_PiloteEnCours.load();
     s_Etat["rompu"] = m_Rompu;
     s_Etat["dansLeContrat"] = m_TirageInjecte;
@@ -2415,6 +2531,76 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
         { "entree", ImposeJson(s_Prep.m_Entree) }, { "arme", ImposeJson(s_Prep.m_Arme) }, { "objet", ImposeJson(s_Prep.m_Objet) },
         { "objet2", ImposeJson(s_Prep.m_Objet2) } };
     s_Etat["modeContrat"] = m_Tirage.m_Valide ? json(CleMode(m_Tirage.m_Mode)) : json(nullptr);
+
+    // ---- Costume de départ, au choix du joueur avant la mission (sans effet
+    // sur le jeu), quand l'entrée fait partir 47 en costume.
+    const bool s_CostumeModifiable = !m_EnMission && (m_Propose || m_Prepare) && !m_Costumes.empty() &&
+                                     EntreeEnCostume(m_TiragePrepare.m_Preparation);
+    if (s_CostumeModifiable) {
+        const auto& c = m_TiragePrepare.m_Preparation.m_Costume;
+        s_Etat["costumeDepart"] = { { "id", c.m_Id }, { "nom", c.Vide() ? Tx("costume.du_jeu") : c.m_Nom },
+                                    { "image", c.Vide() ? m_ImageCostume : c.m_Image } };
+        json s_Liste = json::array();
+        for (const auto& o : m_Costumes) {
+            const auto* e = m_Depot.Trouver(o.m_Id);
+            s_Liste.push_back({ { "id", o.m_Id }, { "nom", o.m_Nom == o.m_IdJeu ? NomCostume(e ? (e->m_NomCommun.empty() ? e->m_Nom : e->m_NomCommun) : o.m_IdJeu) : o.m_Nom },
+                                { "image", e ? e->m_Image : std::string() } });
+        }
+        s_Etat["costumes"] = std::move(s_Liste);
+    }
+    else {
+        s_Etat["costumeDepart"] = nullptr;
+        s_Etat["costumes"] = json::array();
+    }
+
+    // ---- Difficulté estimée du contrat (Tirage.h, EvaluerDifficulte).
+    s_Etat["difficulte"] = nullptr;
+    if (m_Tirage.m_Valide && !m_Tirage.m_Cibles.empty()) {
+        // Ce que l'équipement imposé apporte, en catégories de méthode.
+        std::set<std::string> s_Fournis;
+        for (const auto* s : { &s_Prep.m_Arme, &s_Prep.m_Objet, &s_Prep.m_Objet2 }) {
+            if (s->Vide()) continue;
+            const auto s_IdJeu = EnMinuscules(s->m_IdJeu);
+            // La corde (PROP_MELEE_CLASSIC_FIBER_WIRE, TOKEN_FIBERWIRE) est rangée
+            // en « melee » : elle ne fournit pas pour autant une arme de mêlée.
+            if (s_IdJeu.find("fiberwire") != std::string::npos || s_IdJeu.find("fiber_wire") != std::string::npos) {
+                s_Fournis.insert("fiberwire");
+                continue;
+            }
+            if (const auto* e = m_Depot.Trouver(s->m_Id); e && !e->m_Categorie.empty()) s_Fournis.insert(e->m_Categorie);
+            if (s_IdJeu.find("syringe") != std::string::npos && s_IdJeu.find("lethal") != std::string::npos) s_Fournis.insert("injected_poison");
+            else if (s_IdJeu.find("lethal") != std::string::npos && s_IdJeu.find("poison") != std::string::npos) s_Fournis.insert("consumed_poison");
+        }
+        // Sans préparation imposée, le joueur a son propre équipement.
+        const bool s_ArmeDispo = s_Prep.Vide() || !s_Prep.m_Arme.Vide();
+        const auto d = EvaluerDifficulte(m_Tirage, s_Fournis, s_ArmeDispo);
+
+        json s_Facteurs = json::array();
+        for (const auto& f : d.m_Facteurs) {
+            using EType = SFacteurDifficulte::EType;
+            std::string s_Texte;
+            switch (f.m_Type) {
+                case EType::Methode:
+                    s_Texte = Tx(std::string("methode.") + Methodes()[f.m_Index].m_Cle);
+                    break;
+                case EType::Tenue:
+                    s_Texte = m_Tirage.m_Tenues[f.m_Index].m_EstCostume ? Tx("costume47") : m_Tirage.m_Tenues[f.m_Index].m_Nom;
+                    break;
+                case EType::Complication:
+                    s_Texte = Tx(std::string("compl.") + Complications()[f.m_Index].m_Cle + ".titre");
+                    break;
+                case EType::Pnj:
+                    s_Texte = Tx("diff.pnj");
+                    break;
+                case EType::ArmeATrouver:
+                    s_Texte = Tx("diff.arme");
+                    break;
+            }
+            s_Facteurs.push_back({ { "texte", s_Texte }, { "cible", f.m_Cible }, { "points", std::round(f.m_Points * 10.0) / 10.0 } });
+            if (s_Facteurs.size() >= 4) break;
+        }
+        s_Etat["difficulte"] = { { "note", d.m_Note }, { "points", std::round(d.m_Points * 10.0) / 10.0 }, { "facteurs", s_Facteurs } };
+    }
 
     // ---- Destination tirée parmi celles que le joueur possède.
     json s_Possedees = json::array();
@@ -2545,6 +2731,8 @@ void Roulette::MessagePage(const std::string& p_Json) {
             m_Prepare = true;
             m_EtatPilote.clear();
             Diag("Contrat accepté : {} — {}.", m_Lieu, m_TitreMission);
+            // La fiche montre un écran de chargement jusqu'à la préparation.
+            if (m_Reglages.m_DestinationAuto && m_Reglages.m_Pilote) m_PagesPrepAuLancement = m_PagesPrep.load();
 
             // Julien (24/11/2026) : « accéder à l'écran de préparation
             // directement ». Le mod demande au jeu d'ouvrir la page de
@@ -2576,18 +2764,45 @@ void Roulette::MessagePage(const std::string& p_Json) {
                         }
                         Moteur::AnnulerPage();
                         Diag("Ouverture directe : le jeu n'a pas pris la demande, le pilote prend le relais.");
-                        Sleep(800); // la fiche se ferme
                     }
                     if (!m_Reglages.m_Pilote) {
+                        m_PagesPrepAuLancement = -1;
                         m_PiloteEnCours = false;
                         return;
                     }
+                    // Le pilote appuie sur les touches du jeu : la fiche (et son
+                    // écran de chargement) doit lui laisser la place.
+                    m_Fenetre.Ouvrir(false);
                     Piloter();
+                    if (m_PagesPrep.load() <= m_PagesPrepAuLancement.load()) m_PagesPrepAuLancement = -1;
                     m_PiloteEnCours = false;
                 }).detach();
             }
         }
         m_Fenetre.Pousser();
+    }
+    else if (s_Action == "costume") {
+        {
+            std::lock_guard s_Verrou(m_Verrou);
+            ChoisirCostume(EnMinuscules(ChampTexte(s_Message, "id")));
+        }
+        EnregistrerReglages();
+        m_Fenetre.Pousser();
+    }
+    else if (s_Action == "costumes") {
+        // Le sélecteur s'ouvre : ses images, une fois.
+        std::lock_guard s_Verrou(m_Verrou);
+        m_Depot.Charger();
+        for (auto& o : m_Costumes) {
+            if (const auto* e = m_Depot.Trouver(o.m_Id); e && o.m_Cle2.empty()) o.m_Cle2 = !e->m_CleLoc.empty() ? e->m_CleLoc : e->m_Cle;
+        }
+        ApprendreNoms();
+        if (m_Images && !m_ImagesCostumesDemandees) {
+            for (const auto& o : m_Costumes) {
+                if (const auto* e = m_Depot.Trouver(o.m_Id)) m_Images->Demander(e->m_Image);
+            }
+            m_ImagesCostumesDemandees = true;
+        }
     }
     else if (s_Action == "importer") {
         std::lock_guard s_Verrou(m_Verrou);

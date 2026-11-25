@@ -60,6 +60,10 @@ mission, like an elusive target — one attempt per contract.
   of failing you in the first seconds, and is never drawn again with that starting location.
 - **Freestyle disguises** — when a target must be killed in a given disguise and one of your starting locations
   puts 47 in it, the roulette starts you there.
+- **Your suit, your choice** — the loadout and starting location are locked, but the starting suit is purely
+  cosmetic: the contract sheet lets you pick any suit you own (the choice is remembered). It is offered only when
+  the starting location puts 47 in a suit.
+- **Estimated difficulty** — every contract shows a rating from 1 to 10 and what weighs most in it (see below).
 
 ## How a contract plays
 
@@ -70,7 +74,7 @@ mission, like an elusive target — one attempt per contract.
            Decline                         Reroll                  Accept   (or Copy code to share it)
         (nothing changes)            (spin once more)                │
                                                                      ▼
-                                    planning screen opens, loadout locked ─► Play
+                          (loading screen) planning screen opens, loadout locked ─► Play
                                                                      │
                                     objectives tracked live on the sheet (F9)
                                     the first deviation fails the mission in-game
@@ -102,12 +106,22 @@ mission, like an elusive target — one attempt per contract.
 
 | | |
 |---|---|
-| **F9** | Open or close the contract sheet (mouse and keyboard go to the sheet while it is open; the game keeps running and its music keeps playing). |
+| **F9** | Open or close the contract sheet (mouse and keyboard go to the sheet while it is open; the game keeps running and its music keeps playing, but the mouse no longer turns the camera). |
 | **Esc** | Close the sheet. |
 | In mission | The sheet shows each target, its method and outfit, the complications and the loadout, updated live. |
 
 The first time you play a level, the mod records the NPCs present in it; from then on they can be drawn as targets
 for that mission, alongside the mission's own targets.
+
+### Estimated difficulty
+
+The rating is computed from the drawn contract with fixed weights — it is an estimate, not a measurement. Each
+target costs a point (a little more for an NPC, which the mission does not stage), plus its method (a precise
+electrocution costs far more than a pistol; half as much when the locked loadout provides it, more on an NPC for
+accidents that depend on the scene), plus its outfit, plus each complication (weighted by the number of targets it
+affects: *Don't get spotted* with three targets costs more than with one). The total is mapped to 1–10 on a curve
+that rises fast then saturates: one free target is a 1, a Purist contract with three precise accidents is a 9.
+Labels: Easy (1–2), Fair (3–4), Demanding (5–6), Hard (7–8), Extreme (9–10).
 
 ### Sharing a contract
 
@@ -149,6 +163,7 @@ Most settings live on the sheet (**Settings**). A few are only in the file:
 | `cibles_du_jeu` | `0` · `1` | Mission targets only, no NPCs. |
 | `destinations_exclues` | comma-separated location ids | Destinations unticked on the sheet. |
 | `serie_puriste` | number | Current Purist streak. |
+| `costume_depart` | suit id (empty: the mission's suit) | Starting suit chosen on the sheet. |
 | `outils_developpement` | `0` · `1` | Opens the WebView2 developer tools. |
 
 ## Under the hood

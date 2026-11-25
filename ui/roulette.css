@@ -241,7 +241,7 @@ kbd {
   background: linear-gradient(90deg, rgba(9,9,11,.96) 0%, rgba(9,9,11,.6) 50%, rgba(9,9,11,.2) 100%);
 }
 .bandeau__texte { position: relative; display: grid; gap: 4px; min-width: 0; }
-.bandeau__lieu { font-size: 40px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; line-height: 1; }
+.bandeau__lieu { font-size: 40px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bandeau__mission { display: flex; align-items: baseline; gap: 12px; font-size: 18px; font-weight: 600; text-transform: uppercase; }
 .bandeau__vignette {
   position: relative; flex: none;
@@ -536,31 +536,36 @@ kbd {
 
 /* ------------------------------------------------------------ Difficulté estimée */
 
+/* Dans le bandeau, entre le titre et la vignette : la colonne de droite garde
+   sa hauteur (Julien, 25/11/2026 : « ça déborde trop à droite »). */
 .difficulte {
   --teinte: var(--vert);
-  display: grid; gap: 10px;
-  padding: 14px 16px 13px;
-  background: var(--carte);
-  border-left: 4px solid var(--teinte);
+  position: relative; flex: none; margin-left: auto;
+  width: 250px; height: 110px;
+  display: grid; align-content: center; gap: 6px;
+  padding: 0 16px;
+  background: rgba(9, 9, 11, .74);
+  backdrop-filter: blur(4px);
+  border-left: 3px solid var(--teinte);
+  cursor: default;
 }
 .difficulte--2 { --teinte: #a9d65a; }
 .difficulte--3 { --teinte: #f0a02a; }
 .difficulte--4 { --teinte: #ff5a3c; }
 .difficulte--5 { --teinte: var(--rouge); }
-.difficulte__tete { display: flex; align-items: baseline; gap: 6px; }
-.difficulte__note { font-size: 38px; font-weight: 700; line-height: .9; color: var(--teinte); }
-.difficulte__sur { font-size: 15px; color: var(--gris); }
-.difficulte__libelle { margin-left: auto; font-size: 13px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
-.difficulte__jauge { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; height: 7px; }
-.difficulte__jauge i { background: var(--carte-3); }
+.difficulte--entree { animation: tombe-note .5s var(--rebond); }
+@keyframes tombe-note { from { opacity: 0; transform: translateY(-10px) scale(1.06); } }
+.difficulte__titre { font-size: 10px; font-weight: 700; letter-spacing: .24em; color: var(--gris); text-transform: uppercase; }
+.difficulte__tete { display: flex; align-items: baseline; gap: 5px; }
+.difficulte__note { font-size: 30px; font-weight: 700; line-height: .85; color: var(--teinte); }
+.difficulte__sur { font-size: 13px; color: var(--gris); }
+.difficulte__libelle { margin-left: auto; font-size: 12px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+.difficulte__jauge { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; height: 5px; }
+.difficulte__jauge i { background: rgba(255,255,255,.12); }
 .difficulte__jauge i.plein { background: var(--teinte); }
-.difficulte--entree .difficulte__jauge i.plein { animation: remplit .35s backwards var(--courbe); }
-@keyframes remplit { from { transform: scaleY(0); opacity: 0; } }
-.difficulte__facteurs { display: grid; gap: 3px; }
-.difficulte__facteur { display: flex; gap: 8px; font-size: 13px; color: var(--gris); min-width: 0; }
-.difficulte__facteur b { color: var(--blanc); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.difficulte__facteur span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.difficulte__facteur em { margin-left: auto; flex: none; font-style: normal; color: var(--gris-2); }
+.difficulte--entree .difficulte__jauge i.plein { animation: remplit .3s backwards var(--courbe); }
+@keyframes remplit { from { transform: scaleX(0); opacity: 0; } }
+.difficulte__poids { font-size: 12px; color: var(--gris); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ------------------------------------------------------------ Costume de départ */
 

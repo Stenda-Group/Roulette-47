@@ -504,14 +504,18 @@ const roulette = (() => {
 
   function niveauDifficulte(note) { return note <= 2 ? 1 : note <= 4 ? 2 : note <= 6 ? 3 : note <= 8 ? 4 : 5; }
 
-  function rendreDifficulte(animer, apres) {
+  // Animé : la note tombe une fois tout le contrat posé (Julien, 25/11/2026 :
+  // elle apparaissait avant les cibles), à « fin » millisecondes.
+  function rendreDifficulte(animer, fin) {
     const d = etat.difficulte;
-    $('bloc-difficulte').hidden = !d;
+    const zone = $('difficulte');
+    zone.hidden = !d;
     if (!d) return;
     const niveau = niveauDifficulte(d.note);
-    const zone = $('difficulte');
-    zone.className = 'difficulte difficulte--' + niveau + (animer ? ' difficulte--entree' : '');
-    zone.title = t('diff_aide');
+    zone.className = 'difficulte difficulte--' + niveau;
+    const facteurs = (d.facteurs || []).slice(0, 3);
+    zone.title = t('diff_aide') + (facteurs.length ? '\n\n' + t('diff_poids') + ' :\n' +
+      facteurs.map((f) => '• ' + f.texte + (f.cible ? ' — ' + f.cible : '')).join('\n') : '');
     zone.replaceChildren();
 
     const tete = el('div', 'difficulte__tete');
@@ -519,23 +523,20 @@ const roulette = (() => {
       el('span', 'difficulte__libelle', t('diff_' + niveau)));
     const jauge = el('div', 'difficulte__jauge');
     for (let i = 1; i <= 10; i++) {
-      const case_ = el('i', i <= d.note ? 'plein' : '');
-      if (animer) case_.style.animationDelay = (apres + i * 45) + 'ms';
-      jauge.append(case_);
+      const c = el('i', i <= d.note ? 'plein' : '');
+      c.style.animationDelay = (150 + i * 45) + 'ms';
+      jauge.append(c);
     }
-    zone.append(tete, jauge);
+    zone.append(el('div', 'difficulte__titre', t('difficulte')), tete, jauge);
+    if (facteurs.length) zone.append(el('div', 'difficulte__poids', facteurs.map((f) => f.texte).join(' · ')));
 
-    const facteurs = (d.facteurs || []).slice(0, 3);
-    if (facteurs.length) {
-      const liste = el('div', 'difficulte__facteurs');
-      liste.append(el('div', 'prep__titre', t('diff_poids')));
-      facteurs.forEach((f) => {
-        const ligne = el('div', 'difficulte__facteur');
-        ligne.append(el('b', '', f.texte));
-        if (f.cible) ligne.append(el('span', '', '· ' + f.cible));
-        liste.append(ligne);
-      });
-      zone.append(liste);
+    if (animer) {
+      zone.style.visibility = 'hidden';
+      plus_tard(() => {
+        zone.style.visibility = '';
+        zone.classList.add('difficulte--entree');
+        son.impact();
+      }, fin);
     }
   }
 
@@ -599,8 +600,6 @@ const roulette = (() => {
       compl.append(n);
     });
 
-    rendreDifficulte(animer, apres);
-
     const prep = $('preparation');
     prep.replaceChildren();
     const lignes = lignesPreparation();
@@ -609,6 +608,11 @@ const roulette = (() => {
       if (animer) { n.classList.add('prep--entree'); n.style.animationDelay = (apres + 300 + k * 120) + 'ms'; }
       prep.append(n);
     });
+
+    // La note, après la dernière tenue arrêtée et la dernière ligne posée.
+    const finCibles = base + Math.max(0, etat.cibles.length - 1) * 260 + 350 + 950;
+    const finPreparation = apres + 300 + Math.max(0, lignes.length - 1) * 120 + 450;
+    rendreDifficulte(animer, Math.max(finCibles, finPreparation) + 200);
   }
 
   // ---------------------------------------------------------------- En-tête et boutons

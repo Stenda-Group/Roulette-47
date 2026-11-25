@@ -175,11 +175,15 @@ std::vector<std::string> JetonsDesTenues(const SPlanification& p_Planif, const s
 
 // Écran de préparation : seule l'entrée tirée reste proposée, l'arme et
 // l'équipement tirés sont présélectionnés. Rend vrai si la page a changé.
-bool ImposerPlanification(nlohmann::json& p_Page, const SPreparation& p_Preparation);
+// p_Strict : les emplacements sans objet tiré (armes portées, cachette, second
+// équipement non tiré) sont vidés au lieu de garder le dernier choix du joueur.
+bool ImposerPlanification(nlohmann::json& p_Page, const SPreparation& p_Preparation, bool p_Strict = false);
 
 // Liste d'un emplacement : réduite à l'objet tiré, s'il y figure. Rend vrai si
 // la page a changé ; p_Absent dit si l'objet manquait (interdit dans ce lieu).
-bool ImposerEmplacement(nlohmann::json& p_Page, const SPreparation& p_Preparation, bool& p_Absent);
+// p_Strict : seul le costume reste au choix ; tout autre emplacement ne
+// propose que l'objet tiré, ou rien.
+bool ImposerEmplacement(nlohmann::json& p_Page, const SPreparation& p_Preparation, bool& p_Absent, bool p_Strict = false);
 
 // Le contrat : l'équipement tiré devient l'équipement obligatoire
 // (« MandatoryLoadout », le champ du tutoriel de la Facility).

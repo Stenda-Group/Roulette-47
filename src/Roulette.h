@@ -171,13 +171,10 @@ private:
     // préparation à l'acceptation ; -1 = aucun lancement en cours.
     std::atomic<int> m_PagesPrepAuLancement = -1;
     // Les costumes de 47 possédés (emplacement « disguise » de l'inventaire) :
-    // la tenue de départ reste au choix du joueur, sans effet sur le jeu.
+    // le costume classique y est pris pour la préparation.
     std::vector<SObjetInventaire> m_Costumes;
-    void ChoisirCostume(const std::string& p_Id); // sous verrou ; "" = celui du jeu
     void AppliquerCostume(SPreparation& p_Preparation); // sous verrou : le costume retenu, si l'entrée le permet
     [[nodiscard]] bool EntreeEnCostume(const SPreparation& p_Preparation) const; // sous verrou
-    std::string m_IdCostumeChoisi;   // roulette47.ini, « costume_depart » ("" = celui du jeu)
-    bool m_ImagesCostumesDemandees = false;
 
     bool m_TirageInjecte = false;    // tirage écrit dans le contrat du jeu : figé jusqu'à la fin
     bool m_Rompu = false;            // contrat rompu : la mission est à recommencer

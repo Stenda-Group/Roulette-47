@@ -91,6 +91,17 @@ namespace {
         return s_Propre;
     }
 
+    // Le costume de départ (Julien, 25/11/2026 : « on ne peut pas choisir nous
+    // même la tenue de 47 dans le menu de préparation ? Si c'est impossible,
+    // mets-le toujours en costume noir classique »).
+    //  - vrai : l'écran « Préparation » du jeu reste ouvert, réduit au seul
+    //    emplacement du costume (présélectionné : le costume classique) ;
+    //    arme, objets et entrée sont imposés par le contrat de la mission ;
+    //  - faux : l'écran est retiré (MandatoryLoadout sur la page) et 47 part
+    //    toujours dans le costume classique.
+    constexpr bool c_CostumeAuMenu = true;
+    constexpr const char* c_CostumeClassique = "TOKEN_OUTFIT_HITMANSUIT";
+
     // Le nom d'un costume de 47 quand le jeu n'a pas chargé son texte (aux
     // menus, ceux des costumes ne le sont jamais : essai du 25/11/2026), tiré
     // du nom de travail du dépôt : « CHAR_Agent47_Hero_Summer_Suit_M » →
@@ -187,7 +198,7 @@ void Roulette::ReprendreAncienDossier() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.18 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v0.19 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
 
     if (!Moteur::Resoudre()) {
@@ -279,21 +290,6 @@ void Roulette::ChargerReglages() {
     m_SeriePuriste = std::max(0, Lire(L"serie_puriste", 0));
     m_DiscordActif = Lire(L"discord", 1) != 0;
     {
-        wchar_t s_Id[64] = {};
-        GetPrivateProfileStringW(L"roulette", L"costume_depart", L"", s_Id, 64, s_Fichier.c_str());
-        m_IdCostumeChoisi.clear();
-        for (const wchar_t* c = s_Id; *c; ++c) {
-            if ((*c >= L'0' && *c <= L'9') || (*c >= L'a' && *c <= L'f') || *c == L'-') m_IdCostumeChoisi += static_cast<char>(*c);
-        }
-    }
-    {
-        wchar_t s_Id[64] = {};
-        GetPrivateProfileStringW(L"roulette", L"discord_app", L"", s_Id, 64, s_Fichier.c_str());
-        m_IdDiscord.clear();
-        for (const wchar_t* c = s_Id; *c; ++c) if (*c >= L'0' && *c <= L'9') m_IdDiscord += static_cast<char>(*c);
-        if (m_IdDiscord.empty()) m_IdDiscord = c_IdDiscordParDefaut;
-    }
-    {
         wchar_t s_Liste[4096] = {};
         GetPrivateProfileStringW(L"roulette", L"destinations_exclues", L"", s_Liste, 4096, s_Fichier.c_str());
         std::string s_Texte;
@@ -371,14 +367,6 @@ void Roulette::EnregistrerReglages() {
     Ecrire(L"imposer_preparation", s_R.m_ImposerPreparation);
     Ecrire(L"cibles_du_jeu", s_R.m_CiblesDuJeuSeules);
     Ecrire(L"discord", m_DiscordActif);
-    {
-        std::wstring s_Costume;
-        {
-            std::lock_guard s_Verrou(m_Verrou);
-            s_Costume = Large(m_IdCostumeChoisi);
-        }
-        WritePrivateProfileStringW(L"roulette", L"costume_depart", s_Costume.c_str(), s_Fichier.c_str());
-    }
     {
         std::wstring s_Liste;
         {
@@ -599,8 +587,16 @@ bool Roulette::InjecterContrat(nlohmann::json& p_Reponse) {
     ReglerContrat(s_Contrat["Data"], s_Tirage.m_Mode);
 
     // ---- L'équipement tiré à la préparation devient l'équipement obligatoire.
-    const bool s_Obligatoire = s_DeLaPreparation && m_Reglages.m_ImposerPreparation &&
-                               AjouterEquipementObligatoire(s_Contrat, s_Tirage.m_Preparation);
+    // Costume au menu : pas d'équipement obligatoire (il remplacerait le
+    // costume choisi) ; l'entrée reste imposée.
+    const bool s_AuMenu = c_CostumeAuMenu && EntreeEnCostume(s_Tirage.m_Preparation);
+    bool s_Obligatoire = false;
+    if (s_DeLaPreparation && m_Reglages.m_ImposerPreparation) {
+        if (!s_AuMenu) s_Obligatoire = AjouterEquipementObligatoire(s_Contrat, s_Tirage.m_Preparation);
+        else if (!s_Tirage.m_Preparation.m_Entree.Vide() && s_Contrat.contains("Data") && s_Contrat["Data"].is_object()) {
+            s_Contrat["Data"]["Entrances"] = nlohmann::json::array({ s_Tirage.m_Preparation.m_Entree.m_Id });
+        }
+    }
 
     const auto s_Pnj = std::ranges::count_if(s_Tirage.m_Cibles, [](const auto& c) { return !c.m_Officielle; });
 
@@ -730,7 +726,6 @@ bool Roulette::TraiterMenus(nlohmann::json& p_Reponse) {
             m_EntreesPossedees = std::move(s_Entrees);
             if (!s_Costumes.empty()) {
                 m_Costumes = std::move(s_Costumes);
-                m_ImagesCostumesDemandees = false;
                 Diag("Inventaire : {} costume(s) de 47 possédé(s).", m_Costumes.size());
             }
             Diag("Inventaire lu : {} arme(s) dissimulée(s) et équipement(s), {} entrée(s).", m_Inventaire.size(), m_EntreesPossedees.size());
@@ -853,8 +848,9 @@ bool Roulette::TraiterMenus(nlohmann::json& p_Reponse) {
         if (!m_Prepare || !m_Reglages.m_ImposerPreparation || ContratDeLaPage(p_Reponse) != m_IdContratPrepare) return false;
 
         bool s_Absent = false;
-        const bool s_Change = ImposerEmplacement(p_Reponse, m_TiragePrepare.m_Preparation, s_Absent);
-        if (s_Change) Diag("Préparation : liste d'emplacement réduite à l'objet tiré.");
+        const bool s_Change = ImposerEmplacement(p_Reponse, m_TiragePrepare.m_Preparation, s_Absent,
+                                                 c_CostumeAuMenu && EntreeEnCostume(m_TiragePrepare.m_Preparation));
+        if (s_Change) Diag("Préparation : liste d'emplacement réduite à l'objet tiré (ou vidée).");
         if (s_Absent) Diag("Préparation : l'objet tiré n'est pas permis dans ce lieu, l'emplacement reste libre.");
         return s_Change;
     }
@@ -972,11 +968,22 @@ bool Roulette::PreparerAvantMission(nlohmann::json& p_Page) {
     const bool s_Nouvelle = false;
     m_Tirage = m_TiragePrepare;
 
-    bool s_Change = m_Reglages.m_ImposerPreparation && ImposerPlanification(p_Page, m_TiragePrepare.m_Preparation);
+    bool s_Change = m_Reglages.m_ImposerPreparation && ImposerPlanification(p_Page, m_TiragePrepare.m_Preparation, c_CostumeAuMenu);
 
     // Préparation verrouillée (Julien, 24/11/2026 : on arrive sur la
     // préparation et on n'a plus qu'à lancer, sans rien pouvoir changer).
-    if (m_Reglages.m_ImposerPreparation) {
+    // Costume au menu : l'écran « Préparation » reste, mais ne propose plus
+    // que l'emplacement du costume ; l'équipement est imposé par le contrat
+    // de la mission (InjecterContrat).
+    // Les listes de chaque emplacement ne proposent alors que l'objet tiré
+    // (ImposerEmplacement, strict) : un équipement obligatoire remplacerait
+    // tout, costume compris (essai du 25/11/2026 : 47 partait dans la tenue
+    // de l'entrée).
+    const bool s_CostumeAuMenu = c_CostumeAuMenu && m_Reglages.m_ImposerPreparation && EntreeEnCostume(m_TiragePrepare.m_Preparation);
+    if (s_CostumeAuMenu) {
+        Diag("Préparation : costume au choix dans le menu, équipement réduit aux objets tirés.");
+    }
+    else if (m_Reglages.m_ImposerPreparation) {
         for (auto* s_Contrat : { NoeudJson(p_Page, { "data", "Contract" }), NoeudJson(p_Page, { "data", "UserCentric", "Contract" }) }) {
             if (s_Contrat && AjouterEquipementObligatoire(*s_Contrat, m_TiragePrepare.m_Preparation)) s_Change = true;
         }
@@ -995,7 +1002,7 @@ bool Roulette::PreparerAvantMission(nlohmann::json& p_Page) {
                 auto s_Entree = e;
                 // Le costume choisi par le joueur remplace celui de l'entrée
                 // (une entrée « en costume » : aucune tenue, ou une tenue HERO).
-                if (const auto& c = m_TiragePrepare.m_Preparation.m_Costume; !c.Vide() && !c.m_IdJeu.empty()) {
+                if (const auto& c = m_TiragePrepare.m_Preparation.m_Costume; !s_CostumeAuMenu && !c.Vide() && !c.m_IdJeu.empty()) {
                     s_Equip = nlohmann::json::array({ c.m_IdJeu });
                     if (s_Entree.contains("Properties") && s_Entree["Properties"].is_object()) s_Entree["Properties"]["Equip"] = s_Equip;
                     Diag("Préparation : costume de départ « {} » ({}).", c.m_Nom, c.m_IdJeu);
@@ -1459,9 +1466,10 @@ bool Roulette::EntreeEnCostume(const SPreparation& p_Preparation) const {
 
 void Roulette::AppliquerCostume(SPreparation& p_Preparation) {
     p_Preparation.m_Costume = {};
-    if (m_IdCostumeChoisi.empty() || !EntreeEnCostume(p_Preparation)) return;
+    if (!EntreeEnCostume(p_Preparation)) return;
 
-    const auto s_It = std::ranges::find_if(m_Costumes, [this](const auto& o) { return o.m_Id == m_IdCostumeChoisi; });
+    // Le costume noir classique : présélectionné dans le menu, ou imposé.
+    const auto s_It = std::ranges::find_if(m_Costumes, [](const auto& o) { return o.m_IdJeu == c_CostumeClassique; });
     if (s_It == m_Costumes.end()) return;
 
     SImpose& c = p_Preparation.m_Costume;
@@ -1476,17 +1484,6 @@ void Roulette::AppliquerCostume(SPreparation& p_Preparation) {
         if (c.m_Nom == c.m_IdJeu) c.m_Nom = NomCostume(e->m_NomCommun.empty() ? e->m_Nom : e->m_NomCommun);
     }
     if (m_Images) m_Images->Demander(c.m_Image);
-}
-
-void Roulette::ChoisirCostume(const std::string& p_Id) {
-    if (m_EnMission || !(m_Propose || m_Prepare)) return;
-    if (!p_Id.empty() && std::ranges::none_of(m_Costumes, [&](const auto& o) { return o.m_Id == p_Id; })) return;
-
-    m_IdCostumeChoisi = p_Id;
-    AppliquerCostume(m_TiragePrepare.m_Preparation);
-    m_Tirage.m_Preparation.m_Costume = m_TiragePrepare.m_Preparation.m_Costume;
-    Diag("Costume de départ : {}.", m_TiragePrepare.m_Preparation.m_Costume.Vide() ? std::string("celui du jeu")
-                                                                                     : m_TiragePrepare.m_Preparation.m_Costume.m_Nom);
 }
 
 void Roulette::OublierContrat() {
@@ -2532,27 +2529,6 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
         { "objet2", ImposeJson(s_Prep.m_Objet2) } };
     s_Etat["modeContrat"] = m_Tirage.m_Valide ? json(CleMode(m_Tirage.m_Mode)) : json(nullptr);
 
-    // ---- Costume de départ, au choix du joueur avant la mission (sans effet
-    // sur le jeu), quand l'entrée fait partir 47 en costume.
-    const bool s_CostumeModifiable = !m_EnMission && (m_Propose || m_Prepare) && !m_Costumes.empty() &&
-                                     EntreeEnCostume(m_TiragePrepare.m_Preparation);
-    if (s_CostumeModifiable) {
-        const auto& c = m_TiragePrepare.m_Preparation.m_Costume;
-        s_Etat["costumeDepart"] = { { "id", c.m_Id }, { "nom", c.Vide() ? Tx("costume.du_jeu") : c.m_Nom },
-                                    { "image", c.Vide() ? m_ImageCostume : c.m_Image } };
-        json s_Liste = json::array();
-        for (const auto& o : m_Costumes) {
-            const auto* e = m_Depot.Trouver(o.m_Id);
-            s_Liste.push_back({ { "id", o.m_Id }, { "nom", o.m_Nom == o.m_IdJeu ? NomCostume(e ? (e->m_NomCommun.empty() ? e->m_Nom : e->m_NomCommun) : o.m_IdJeu) : o.m_Nom },
-                                { "image", e ? e->m_Image : std::string() } });
-        }
-        s_Etat["costumes"] = std::move(s_Liste);
-    }
-    else {
-        s_Etat["costumeDepart"] = nullptr;
-        s_Etat["costumes"] = json::array();
-    }
-
     // ---- Difficulté estimée du contrat (Tirage.h, EvaluerDifficulte).
     s_Etat["difficulte"] = nullptr;
     if (m_Tirage.m_Valide && !m_Tirage.m_Cibles.empty()) {
@@ -2780,29 +2756,6 @@ void Roulette::MessagePage(const std::string& p_Json) {
             }
         }
         m_Fenetre.Pousser();
-    }
-    else if (s_Action == "costume") {
-        {
-            std::lock_guard s_Verrou(m_Verrou);
-            ChoisirCostume(EnMinuscules(ChampTexte(s_Message, "id")));
-        }
-        EnregistrerReglages();
-        m_Fenetre.Pousser();
-    }
-    else if (s_Action == "costumes") {
-        // Le sélecteur s'ouvre : ses images, une fois.
-        std::lock_guard s_Verrou(m_Verrou);
-        m_Depot.Charger();
-        for (auto& o : m_Costumes) {
-            if (const auto* e = m_Depot.Trouver(o.m_Id); e && o.m_Cle2.empty()) o.m_Cle2 = !e->m_CleLoc.empty() ? e->m_CleLoc : e->m_Cle;
-        }
-        ApprendreNoms();
-        if (m_Images && !m_ImagesCostumesDemandees) {
-            for (const auto& o : m_Costumes) {
-                if (const auto* e = m_Depot.Trouver(o.m_Id)) m_Images->Demander(e->m_Image);
-            }
-            m_ImagesCostumesDemandees = true;
-        }
     }
     else if (s_Action == "importer") {
         std::lock_guard s_Verrou(m_Verrou);

@@ -771,7 +771,7 @@ SPreparation TirerPreparation(const SPlanification& p_Planif, const std::vector<
 
 // ---------------------------------------------------------------- Écriture
 
-bool ImposerPlanification(json& p_Page, const SPreparation& p_Preparation) {
+bool ImposerPlanification(json& p_Page, const SPreparation& p_Preparation, bool p_Strict) {
     if (!p_Page.is_object() || !p_Page.contains("data") || !p_Page["data"].is_object()) return false;
     auto& d = p_Page["data"];
     bool s_Change = false;
@@ -805,7 +805,15 @@ bool ImposerPlanification(json& p_Page, const SPreparation& p_Preparation) {
                 ++s_Gears;
             }
 
-            if (!s_Impose || s_Impose->Vide() || !s_Impose->m_Brut.is_object()) continue;
+            if (!s_Impose || s_Impose->Vide() || !s_Impose->m_Brut.is_object()) {
+                // Rien de tiré pour cet emplacement : vidé (armes portées,
+                // cachette, second équipement), sauf le costume, au choix.
+                if (p_Strict && s_Nom != "disguise" && !s_Emplacement["Recommended"].is_null()) {
+                    s_Emplacement["Recommended"] = nullptr;
+                    s_Change = true;
+                }
+                continue;
+            }
 
             json s_Objet = s_Impose->m_Brut;
             if (!s_Objet.contains("Properties")) s_Objet["Properties"] = json::object();
@@ -947,7 +955,7 @@ std::string ContratDeLaPage(const json& p_Page) {
     return Txt(Chemin(p_Page, { "data", "UserCentric", "Contract", "Metadata" }), "Id");
 }
 
-bool ImposerEmplacement(json& p_Page, const SPreparation& p_Preparation, bool& p_Absent) {
+bool ImposerEmplacement(json& p_Page, const SPreparation& p_Preparation, bool& p_Absent, bool p_Strict) {
     p_Absent = false;
     if (!p_Page.is_object() || !p_Page.contains("data") || !p_Page["data"].is_object()) return false;
 
@@ -961,16 +969,24 @@ bool ImposerEmplacement(json& p_Page, const SPreparation& p_Preparation, bool& p
     const auto s_Slot = Txt(d, "SlotId").empty() ? Txt(s_Donnees, "SlotId") : Txt(d, "SlotId");
     const SImpose* s_Impose = s_Slot == "2" ? &p_Preparation.m_Arme : s_Slot == "4" ? &p_Preparation.m_Objet
                             : s_Slot == "5" ? &p_Preparation.m_Objet2 : nullptr;
-    if (!s_Impose || s_Impose->Vide()) return false;
+
+    // Le costume (« 3 ») reste au choix : il ne change rien au contrat.
+    const bool s_Costume = s_Slot == "3" || Txt(Chemin(s_Donnees, { "Items" }).is_array() && !s_Donnees["Items"].empty()
+                                                    ? Chemin(s_Donnees["Items"][0], { "Item", "Unlockable", "Properties" }) : json::object(),
+                                                "LoadoutSlot") == "disguise";
+    if (s_Costume) return false;
+    if (!p_Strict && (!s_Impose || s_Impose->Vide())) return false;
 
     json s_Gardes = json::array();
-    for (const auto& i : s_Donnees["Items"]) {
-        if (IdObjet(Chemin(i, { "Item" })) == s_Impose->m_Id) s_Gardes.push_back(i);
+    if (s_Impose && !s_Impose->Vide()) {
+        for (const auto& i : s_Donnees["Items"]) {
+            if (IdObjet(Chemin(i, { "Item" })) == s_Impose->m_Id) s_Gardes.push_back(i);
+        }
     }
 
-    if (s_Gardes.empty()) {
-        p_Absent = true; // interdit dans ce lieu : on laisse le choix plutôt qu'une liste vide
-        return false;
+    if (s_Gardes.empty() && s_Impose && !s_Impose->Vide()) {
+        p_Absent = true; // interdit dans ce lieu
+        if (!p_Strict) return false; // ancien comportement : on laisse le choix
     }
 
     s_Donnees["Items"] = std::move(s_Gardes);

@@ -25,7 +25,7 @@ randomised contract — the way the community has played *Hitman roulette* for y
   *and* regular NPCs of the level, on an equal footing), a kill method and an outfit for each target,
   complications, starting location, concealed weapon and gear.
 - ✅ **Accept, reroll or decline.** Accept and the mission's **planning screen opens immediately** — no menu
-  navigation, no simulated key presses — with the **loadout locked**: there is nothing left to do but press *Play*.
+  navigation, no simulated key presses — with the **loadout locked**: only the suit is left to choose, then *Play*.
 - 🧾 **Written into the real contract.** The roulette objectives replace the mission's objectives; the game tracks
   them like its own, shows them on the briefing and the loading screen, and **fails the mission the vanilla way**
   at the first deviation.
@@ -60,9 +60,10 @@ mission, like an elusive target — one attempt per contract.
   of failing you in the first seconds, and is never drawn again with that starting location.
 - **Freestyle disguises** — when a target must be killed in a given disguise and one of your starting locations
   puts 47 in it, the roulette starts you there.
-- **Your suit, your choice** — the loadout and starting location are locked, but the starting suit is purely
-  cosmetic: the contract sheet lets you pick any suit you own (the choice is remembered). It is offered only when
-  the starting location puts 47 in a suit.
+- **Your suit, your choice** — the starting suit is purely cosmetic, so it stays free: the game's own planning
+  screen remains open, with the drawn weapon, items and starting location preselected and nothing else offered in
+  their lists, while the suit slot lists every suit you own (the classic black suit is preselected). Offered when
+  the starting location puts 47 in a suit; a starting location in a disguise locks the whole screen as before.
 - **Estimated difficulty** — every contract shows a rating from 1 to 10 and what weighs most in it (see below).
 
 ## How a contract plays
@@ -74,7 +75,7 @@ mission, like an elusive target — one attempt per contract.
            Decline                         Reroll                  Accept   (or Copy code to share it)
         (nothing changes)            (spin once more)                │
                                                                      ▼
-                          (loading screen) planning screen opens, loadout locked ─► Play
+                    (loading screen) planning screen opens, loadout locked, suit free ─► Play
                                                                      │
                                     objectives tracked live on the sheet (F9)
                                     the first deviation fails the mission in-game
@@ -163,7 +164,6 @@ Most settings live on the sheet (**Settings**). A few are only in the file:
 | `cibles_du_jeu` | `0` · `1` | Mission targets only, no NPCs. |
 | `destinations_exclues` | comma-separated location ids | Destinations unticked on the sheet. |
 | `serie_puriste` | number | Current Purist streak. |
-| `costume_depart` | suit id (empty: the mission's suit) | Starting suit chosen on the sheet. |
 | `outils_developpement` | `0` · `1` | Opens the WebView2 developer tools. |
 
 ## Under the hood
@@ -182,8 +182,10 @@ Most settings live on the sheet (**Settings**). A few are only in the file:
 - **Server responses rewritten in memory.** Menu pages and contracts arrive as JSON from IOI's servers. The mod
   reads destinations, missions, inventory and unlocked starting locations from them, and rewrites the contract it
   receives: the roulette objectives are added as state machines (`Kill` with `KillMethodStrict`/`Broad` and outfit
-  conditions, failure on the first wrong kill), the original objectives are hidden, and `MandatoryLoadout` /
-  `Entrances` lock the planning screen exactly like the game's own special missions.
+  conditions, failure on the first wrong kill), the original objectives are hidden, and `Entrances` keeps the drawn
+  starting location. The loadout is locked by trimming each slot's item list to the drawn item (the suit list is
+  left whole); for a start in a disguise, `MandatoryLoadout` removes the planning screen like the game's own special
+  missions. A `MandatoryLoadout` is not used otherwise: it replaces the whole loadout, suit included.
 - **Opening the planning screen.** Menu actions are objects (`ZLink@JSONTemplate`…). The mod captures the menu
   navigator from the first link the game executes, then builds the same page request the game builds for a mission
   tile (`planning` + `contractid`) with the game's own JSON reader, on the game thread.

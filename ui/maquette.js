@@ -133,7 +133,6 @@
       complications: c.complications.map((x) => ({ ...x, etat: 'en_cours' })),
       preparation: c.preparation,
       difficulte: c.difficulte,
-      costumeDepart: { id: '', nom: 'Costume de la mission', image: '' },
       lancement: null,
       etat: 'propose', enMission: false, relancePossible: true, dansLeContrat: false, rompu: false,
     });
@@ -180,7 +179,7 @@
     ['Lancer la mission', () => {
       if (!etat.cibles.length) poserContrat();
       Object.assign(etat, { etat: 'en_cours', enMission: true, dansLeContrat: true, relancePossible: false,
-        costumeDepart: null, lancement: null });
+        lancement: null });
       etat.preparation.arme.etat = 'reussi';
       etat.preparation.objet.etat = 'reussi';
     }],

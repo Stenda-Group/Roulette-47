@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Roulette 47</title>
-<link rel="stylesheet" href="roulette.css?v=33">
+<link rel="stylesheet" href="roulette.css?v=34">
 </head>
 <body>
 <!--
@@ -97,17 +97,6 @@
     <button class="bouton bouton--discret" id="btn-reglages"><svg viewBox="0 0 24 24"><use href="#i-reglages"/></svg><span data-t="reglages">Réglages</span></button>
   </footer>
 
-  <!-- Le costume de départ, au choix (sans effet sur le contrat). -->
-  <aside class="vestiaire" id="vestiaire" hidden>
-    <div class="vestiaire__tete">
-      <h2 class="intertitre" data-t="costume_depart">Tenue de départ</h2>
-      <input class="code__champ" id="vestiaire-recherche" type="text" spellcheck="false" data-t-placeholder="costume_chercher" placeholder="Chercher un costume">
-      <button class="bouton" id="vestiaire-fermer" data-t="retour">Retour</button>
-    </div>
-    <p class="reglage-note" data-t="costume_note">Seul le costume se choisit : il ne change rien au contrat.</p>
-    <div class="vestiaire__grille" id="vestiaire-grille"></div>
-  </aside>
-
   <!-- Contrat accepté : la mission met quelques secondes à s'ouvrir. -->
   <div class="chargement" id="chargement" hidden>
     <div class="chargement__roue"><span>47</span></div>
@@ -182,8 +171,8 @@
   <symbol id="i-tete" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" stroke-width="2"/></symbol>
 </svg>
 
-<script src="textes.js?v=32"></script>
-<script src="roulette.js?v=33"></script>
-<script src="maquette.js?v=33"></script>
+<script src="textes.js?v=34"></script>
+<script src="roulette.js?v=34"></script>
+<script src="maquette.js?v=34"></script>
 </body>
 </html>

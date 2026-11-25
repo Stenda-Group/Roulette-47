@@ -27,6 +27,12 @@ Images::Images() :
     std::error_code s_Erreur;
     std::filesystem::create_directories(m_DossierCache, s_Erreur);
 
+    if (std::ifstream s_Liste(std::filesystem::path(m_DossierCache) / "introuvables.txt"); s_Liste) {
+        for (std::string s_Ligne; std::getline(s_Liste, s_Ligne);) {
+            if (!s_Ligne.empty()) m_Introuvables[s_Ligne] = true;
+        }
+    }
+
     m_Thread = std::thread(&Images::Boucle, this);
 }
 
@@ -118,6 +124,13 @@ void Images::Demander(const std::string& p_Chemin, const std::string& p_Repli) {
     }
 }
 
+bool Images::Introuvable(const std::string& p_Chemin) {
+    if (p_Chemin.empty()) return true;
+    std::lock_guard s_Verrou(m_Verrou);
+    const auto s_It = m_Introuvables.find(p_Chemin);
+    return s_It != m_Introuvables.end() && s_It->second;
+}
+
 void Images::Boucle() {
     while (true) {
         std::string s_Chemin;
@@ -162,7 +175,14 @@ void Images::Boucle() {
             }
         }
 
-        if (!s_Ok) Diag("Image introuvable sur le service : {}", s_Chemin);
+        if (!s_Ok) {
+            Diag("Image introuvable sur le service : {}", s_Chemin);
+            std::lock_guard s_Verrou(m_Verrou);
+            if (!m_Introuvables[s_Chemin]) {
+                m_Introuvables[s_Chemin] = true;
+                std::ofstream(std::filesystem::path(m_DossierCache) / "introuvables.txt", std::ios::app) << s_Chemin << '\n';
+            }
+        }
 
         std::function<void()> s_Rappel;
 

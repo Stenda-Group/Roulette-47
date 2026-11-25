@@ -266,8 +266,10 @@ int main(int argc, char** argv) {
             SReglages r;
             r.m_Mode = s_Mode;
             r.m_NbComplications = 3;
-            r.m_ImposerMethode = false; // sans effet hors Freestyle
-            r.m_ImposerTenue = false;
+            // Réglages valables dans tous les modes depuis la v0.17 : imposer
+            // méthode et tenue (par défaut), méthodes du mode seulement.
+            r.m_ImposerMethode = true;
+            r.m_ImposerTenue = true;
             bool s_MethodesOk = true, s_CostumeOk = true, s_ComplOk = true, s_PrepOk = true, s_TroisAuPlus = true;
             std::set<std::string> s_Armes, s_Methodes;
             for (int i = 0; i < 300; ++i) {

@@ -40,6 +40,22 @@ namespace {
             std::vector<uint8_t> s_Tampon(s_Dispo);
             DWORD s_Lus = 0;
             if (!ReadFile(h, s_Tampon.data(), s_Dispo, &s_Lus, nullptr)) return false;
+            // Une erreur de Discord (application inconnue, activité refusée…) : au journal.
+            const std::string s_Texte(s_Tampon.begin(), s_Tampon.begin() + s_Lus);
+            if (s_Texte.find("\"evt\":\"ERROR\"") != std::string::npos || s_Texte.find("\"code\":4") != std::string::npos) {
+                const auto p = s_Texte.find('{');
+                Diag("Discord : réponse d'erreur : {}", p == std::string::npos ? s_Texte : s_Texte.substr(p, 300));
+            }
+            else if (s_Texte.find("\"cmd\":\"SET_ACTIVITY\"") != std::string::npos) {
+                static int s_Fois = 0;
+                if (++s_Fois <= 3) {
+                    const auto p = s_Texte.find('{');
+                    Diag("Discord : réponse : {}", p == std::string::npos ? s_Texte : s_Texte.substr(p, 400));
+                }
+            }
+            else if (s_Texte.find("\"evt\":\"READY\"") != std::string::npos) {
+                Diag("Discord : prêt (application acceptée par le client).");
+            }
         }
     }
 
@@ -83,6 +99,10 @@ void Discord::Boucle() {
     bool s_Signale = false;
     auto s_ProchainEssai = std::chrono::steady_clock::now();
     unsigned s_Nonce = 0;
+    // Une présence affichée est renvoyée toutes les 5 s : un autre mod du jeu
+    // (DiscordRichPresence de ZHMModSDK) écrit celle du même processus, et
+    // Discord montre la dernière reçue. Discord en admet 5 par 20 s.
+    auto s_DernierEnvoi = std::chrono::steady_clock::now();
 
     while (!m_Arret) {
         if (h == INVALID_HANDLE_VALUE) {
@@ -112,7 +132,9 @@ void Discord::Boucle() {
         bool s_Envoyer = false;
         {
             std::lock_guard s_Verrou(m_Verrou);
-            if (m_Nouvelle) {
+            const bool s_Rappel = !(m_Voulue.m_Details.empty() && m_Voulue.m_Etat.empty()) &&
+                                  std::chrono::steady_clock::now() - s_DernierEnvoi > std::chrono::seconds(5);
+            if (m_Nouvelle || s_Rappel) {
                 s_Presence = m_Voulue;
                 m_Nouvelle = false;
                 s_Envoyer = true;
@@ -120,6 +142,7 @@ void Discord::Boucle() {
         }
 
         if (s_Envoyer) {
+            s_DernierEnvoi = std::chrono::steady_clock::now();
             const nlohmann::json s_Commande = {
                 { "cmd", "SET_ACTIVITY" },
                 { "args", { { "pid", static_cast<int>(GetCurrentProcessId()) }, { "activity", Activite(s_Presence) } } },

@@ -81,7 +81,7 @@ struct SReglages {
     bool m_ImposerMethode = true;
     bool m_ImposerTenue = true;
     bool m_AutoriserCostume = true;   // le costume de 47 peut sortir comme tenue
-    int m_NbComplications = 1;        // 0 à 3
+    int m_NbComplications = 3;        // au plus (0 à 3) : le nombre est tiré entre 1 et lui
     bool m_Familles[6] = { true, true, true, true, true, true }; // cf. FamillesMethodes()
     bool m_TirageAuto = true;         // tirer dès le début de la mission
     int m_NbPnj = 1;                  // (n'est plus utilisé : tous les PNJ connus sont candidats)

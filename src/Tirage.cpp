@@ -239,9 +239,18 @@ void Tirer(STirage& p_Tirage, const SReglages& p_Reglages, std::mt19937& p_Hasar
         }
     }
     else {
+        // Les méthodes du mode, restreintes aux familles cochées (les réglages
+        // valent pour tous les modes, Julien 25/11/2026) ; aucune ne reste :
+        // toutes celles du mode.
+        std::vector<int> s_DuMode;
         for (const char* s_Cle : MethodesDuMode(s_Mode)) {
-            if (const int i = IndexMethode(s_Cle); i >= 0) s_Methodes.push_back(i);
+            if (const int i = IndexMethode(s_Cle); i >= 0) s_DuMode.push_back(i);
         }
+        for (const int i : s_DuMode) {
+            const int s_Famille = IndexFamille(s_Toutes[i].m_Famille);
+            if (s_Famille < 0 || p_Reglages.m_Familles[s_Famille]) s_Methodes.push_back(i);
+        }
+        if (s_Methodes.empty()) s_Methodes = s_DuMode;
         if (s_Methodes.empty()) s_Methodes.push_back(-1);
     }
 
@@ -256,8 +265,8 @@ void Tirer(STirage& p_Tirage, const SReglages& p_Reglages, std::mt19937& p_Hasar
         }
     }
 
-    const bool s_ImposerMethode = !s_Libre || p_Reglages.m_ImposerMethode;
-    const bool s_ImposerTenue = !s_Libre || p_Reglages.m_ImposerTenue;
+    const bool s_ImposerMethode = p_Reglages.m_ImposerMethode;
+    const bool s_ImposerTenue = p_Reglages.m_ImposerTenue;
 
     for (auto& s_Cible : p_Tirage.m_Cibles) {
         s_Cible.m_Etat = EEtatObjectif::EnCours;
@@ -312,7 +321,11 @@ void Tirer(STirage& p_Tirage, const SReglages& p_Reglages, std::mt19937& p_Hasar
 
         std::ranges::shuffle(s_Candidates, p_Hasard);
 
-        for (int i = 0; i < std::clamp(p_Reglages.m_NbComplications, 0, 3) && i < static_cast<int>(s_Candidates.size()); ++i) {
+        // Entre 1 et le réglage (3 par défaut), au hasard (Julien, 25/11/2026) ;
+        // réglé à 0 : aucune.
+        const int s_Max = std::clamp(p_Reglages.m_NbComplications, 0, 3);
+        const int s_Nombre = s_Max == 0 ? 0 : std::uniform_int_distribution<int>(1, s_Max)(p_Hasard);
+        for (int i = 0; i < s_Nombre && i < static_cast<int>(s_Candidates.size()); ++i) {
             p_Tirage.m_Complications.push_back({ s_Candidates[i], EEtatObjectif::EnCours });
         }
     }

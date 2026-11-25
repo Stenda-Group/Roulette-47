@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Roulette 47</title>
-<link rel="stylesheet" href="roulette.css?v=29">
+<link rel="stylesheet" href="roulette.css?v=30">
 </head>
 <body>
 <!--
@@ -101,17 +101,17 @@
 
     <div class="reglage-ligne"><span data-t="cibles_min">Cibles : au moins</span><div class="segments" id="nb-cibles-min"></div></div>
     <div class="reglage-ligne"><span data-t="cibles_max">Cibles : au plus</span><div class="segments" id="nb-cibles-max"></div></div>
-    <div class="reglage-ligne"><span data-t="complications">Complications</span><div class="segments" id="nb-complications"></div></div>
+    <div class="reglage-ligne"><span data-t="complications_max">Complications : au plus</span><div class="segments" id="nb-complications"></div></div>
 
-    <p class="reglage-note" id="note-freestyle" data-t="note_freestyle" hidden>Méthodes, tenues et familles sont fixées par le mode choisi à l’accueil ; ces réglages ne valent que pour le mode Freestyle.</p>
+    <p class="reglage-note" id="note-freestyle" data-t="note_freestyle" hidden>Ces réglages valent pour tous les modes, dans les limites du mode choisi.</p>
 
-    <div class="reglage-ligne reglage-ligne--colonne" data-freestyle>
+    <div class="reglage-ligne reglage-ligne--colonne">
       <span data-t="familles">Familles de méthodes</span>
       <div class="puces" id="familles"></div>
     </div>
 
-    <label class="interrupteur" data-freestyle><input type="checkbox" data-reglage="imposerMethode"><span></span><b class="txt" data-t="r_imposerMethode">Imposer une méthode</b></label>
-    <label class="interrupteur" data-freestyle><input type="checkbox" data-reglage="imposerTenue"><span></span><b class="txt" data-t="r_imposerTenue">Imposer une tenue</b></label>
+    <label class="interrupteur"><input type="checkbox" data-reglage="imposerMethode"><span></span><b class="txt" data-t="r_imposerMethode">Imposer une méthode</b></label>
+    <label class="interrupteur"><input type="checkbox" data-reglage="imposerTenue"><span></span><b class="txt" data-t="r_imposerTenue">Imposer une tenue</b></label>
     <label class="interrupteur" data-freestyle><input type="checkbox" data-reglage="costume"><span></span><b class="txt" data-t="r_costume">Costume de 47 possible</b></label>
     <div class="reglage-ligne reglage-ligne--colonne">
       <span data-t="destinations_reglage">Destinations tirées</span>
@@ -163,8 +163,8 @@
   <symbol id="i-tete" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" stroke-width="2"/></symbol>
 </svg>
 
-<script src="textes.js?v=29"></script>
-<script src="roulette.js?v=29"></script>
-<script src="maquette.js?v=29"></script>
+<script src="textes.js?v=30"></script>
+<script src="roulette.js?v=30"></script>
+<script src="maquette.js?v=30"></script>
 </body>
 </html>

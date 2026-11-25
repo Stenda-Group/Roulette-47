@@ -25,7 +25,7 @@ namespace {
     // L'application Discord de Roulette 47 (portail des développeurs de
     // Discord) ; « discord_app » de roulette47.ini la remplace. Vide : pas de
     // présence tant qu'aucune n'est réglée.
-    constexpr const char* c_IdDiscordParDefaut = "";
+    constexpr const char* c_IdDiscordParDefaut = "1575174401912082493";
 
     // p_Json[a][b]… s'il existe, sinon nullptr (rien n'est créé dans la page).
     nlohmann::json* NoeudJson(nlohmann::json& p_Json, std::initializer_list<const char*> p_Cles) {
@@ -155,7 +155,7 @@ void Roulette::ReprendreAncienDossier() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.16 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v0.17 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
 
     if (!Moteur::Resoudre()) {
@@ -235,7 +235,7 @@ void Roulette::ChargerReglages() {
     m_Reglages.m_ImposerMethode = Lire(L"imposer_methode", 1) != 0;
     m_Reglages.m_ImposerTenue = Lire(L"imposer_tenue", 1) != 0;
     m_Reglages.m_AutoriserCostume = Lire(L"costume", 1) != 0;
-    m_Reglages.m_NbComplications = std::clamp(Lire(L"complications", 1), 0, 3);
+    m_Reglages.m_NbComplications = std::clamp(Lire(L"complications", 3), 0, 3);
     // Plus aucun tirage tout seul (Julien, 23/11/2026 : « c'est à moi de
     // décider si je veux jouer avec la roulette »). Nouvelle clé : l'ancienne
     // « tirage_auto » valait 1 chez lui.
@@ -624,7 +624,10 @@ bool Roulette::ChargerMemoireLieu(const std::string& p_Lieu, STirage& p_Tirage, 
 
     std::vector<json> s_Pnj;
     for (const auto& p : s_Memoire.value("pnj", json::array())) {
-        if (!ChampTexte(p, "id").empty() && !p_Officielles.contains(EnMinuscules(ChampTexte(p, "id")))) s_Pnj.push_back(p);
+        if (ChampTexte(p, "id").empty() || p_Officielles.contains(EnMinuscules(ChampTexte(p, "id")))) continue;
+        // Sans photo sur le service d'IOI : jamais tiré.
+        if (m_Images && m_Images->Introuvable(ChampTexte(p, "image"))) continue;
+        s_Pnj.push_back(p);
     }
 
     std::ranges::shuffle(s_Pnj, m_Hasard);
@@ -1524,45 +1527,33 @@ void Roulette::TerminerTirage() {
 // Ce que Discord montre : où en est la roulette. Le chronomètre repart à
 // chaque changement de phase (menus, contrat proposé, accepté, mission). Sous verrou.
 SPresence Roulette::PresenceActuelle() {
+    // Seulement en mission, et seulement avec un contrat Roulette 47 (Julien,
+    // 25/11/2026) : partout ailleurs, la présence est effacée.
     SPresence p;
-    const auto Mode = [](EMode m) { return Tx(std::string("discord.mode.") + CleMode(m)); };
-    const auto LieuMission = [this] {
-        if (m_Lieu.empty()) return m_TitreMission;
-        return m_TitreMission.empty() ? m_Lieu : m_Lieu + " · " + m_TitreMission;
-    };
+    if (!(m_EnMission && m_TirageInjecte && m_Tirage.m_Valide)) {
+        m_PhasePresence.clear();
+        return p;
+    }
 
-    std::string s_Phase;
-    if (m_EnMission && m_TirageInjecte && m_Tirage.m_Valide) {
-        p.m_Details = TxF("discord.mission", Mode(m_Tirage.m_Mode));
-        if (m_Tirage.m_Terminee) {
-            p.m_Etat = Tx(m_Tirage.Bilan() == EEtatObjectif::Reussi ? "discord.reussi" : "discord.echoue");
-        }
-        else {
-            const auto s_Restantes = std::ranges::count_if(m_Tirage.m_Cibles, [](const auto& c) { return c.m_Etat == EEtatObjectif::EnCours; });
-            p.m_Etat = m_Lieu + (m_Lieu.empty() ? "" : " · ") + TxF("discord.cibles", std::to_string(s_Restantes));
-        }
-        s_Phase = "mission" + m_IdLieu;
+    // Le mod « DiscordRichPresence » de ZHMModSDK écrit la présence du même
+    // processus : Roulette 47 renvoie la sienne toutes les 5 s pour garder la main.
+    static bool s_AutrePresenceSignalee = false;
+    if (!s_AutrePresenceSignalee && GetModuleHandleW(L"DiscordRichPresence.dll")) {
+        s_AutrePresenceSignalee = true;
+        Diag("Discord : le mod DiscordRichPresence de ZHMModSDK est chargé ; la présence de Roulette 47 est renvoyée toutes les 5 s pour passer devant.");
     }
-    else if (m_EnMission) {
-        p.m_Details = Tx("discord.sans_roulette");
-        p.m_Etat = m_Lieu;
-        s_Phase = "libre" + m_IdLieu;
-    }
-    else if (m_Prepare) {
-        p.m_Details = TxF("discord.accepte", Mode(m_TiragePrepare.m_Mode));
-        p.m_Etat = LieuMission();
-        s_Phase = "accepte" + m_IdContratPrepare;
-    }
-    else if (m_Propose) {
-        p.m_Details = TxF("discord.propose", Mode(m_TiragePrepare.m_Mode));
-        p.m_Etat = LieuMission();
-        s_Phase = "propose";
+
+    p.m_Details = TxF("discord.mission", Tx(std::string("discord.mode.") + CleMode(m_Tirage.m_Mode)));
+    if (m_Tirage.m_Terminee) {
+        p.m_Etat = Tx(m_Tirage.Bilan() == EEtatObjectif::Reussi ? "discord.reussi" : "discord.echoue");
     }
     else {
-        p.m_Details = Tx("discord.menus");
-        s_Phase = "menus";
+        const auto s_Restantes = std::ranges::count_if(m_Tirage.m_Cibles, [](const auto& c) { return c.m_Etat == EEtatObjectif::EnCours; });
+        p.m_Etat = m_Lieu + (m_Lieu.empty() ? "" : " · ") + TxF("discord.cibles", std::to_string(s_Restantes));
     }
 
+    // Le chronomètre part à l'entrée en mission.
+    const std::string s_Phase = "mission" + m_IdLieu;
     if (s_Phase != m_PhasePresence) {
         m_PhasePresence = s_Phase;
         m_DebutPresence = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -2117,8 +2108,12 @@ bool Roulette::PreparerNiveau() {
 void Roulette::ComposerCibles() {
     m_Tirage.m_Cibles = m_CiblesContrat;
 
-    std::vector<size_t> s_Indices(m_Pnj.size());
-    for (size_t i = 0; i < s_Indices.size(); ++i) s_Indices[i] = i;
+    std::vector<size_t> s_Indices;
+    for (size_t i = 0; i < m_Pnj.size(); ++i) {
+        // Sans photo sur le service d'IOI : jamais tiré.
+        if (m_Images && m_Images->Introuvable(m_Pnj[i].m_Image)) continue;
+        s_Indices.push_back(i);
+    }
     std::ranges::shuffle(s_Indices, m_Hasard);
 
     const auto s_Nombre = s_Indices.size(); // tous les PNJ du niveau sont candidats
@@ -2286,6 +2281,24 @@ void Roulette::ChoisirImagesObjets() {
             Diag("Image de « {} » : {} ({}){}{}", Methodes()[i].m_Libelle,
                  s_Candidats.empty() ? "aucune, icône" : s_Candidats.front()->m_NomCommun,
                  s_Candidats.empty() ? "" : s_Candidats.front()->m_Image, s_Autres.empty() ? "" : " ; autres :", s_Autres);
+        }
+    }
+
+    // Pas d'objet du dépôt pour la méthode (« Accident », « Noyade »…) : l'image
+    // des défis génériques du jeu (Julien, 25/11/2026 : plus de case vide).
+    {
+        const auto Defi = [](const char* p_Nom) { return std::string("images/challenges/profile_challenges/generic_location_47_") + p_Nom + ".jpg"; };
+        const std::pair<const char*, std::string> s_Replis[] = {
+            { "accident", Defi("accident") }, { "electrocution", Defi("accident") }, { "chute", Defi("accident") },
+            { "objet_suspendu", Defi("accident") }, { "brulure", Defi("accident") }, { "explosion_accident", Defi("accident") },
+            { "noyade", Defi("drown") }, { "poison", Defi("poison") }, { "poison_ingere", Defi("poison") },
+            { "poison_injecte", Defi("poison") }, { "corde", Defi("fiberwire") },
+        };
+        for (size_t i = 0; i < Methodes().size() && i < m_ImagesMethodes.size(); ++i) {
+            if (!m_ImagesMethodes[i].empty()) continue;
+            for (const auto& [s_Cle, s_Image] : s_Replis) {
+                if (std::string_view(Methodes()[i].m_Cle) == s_Cle) m_ImagesMethodes[i] = s_Image;
+            }
         }
     }
 

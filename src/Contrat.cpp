@@ -155,8 +155,10 @@ void ReglerContrat(json& p_Donnees, EMode p_Mode) {
         p_Donnees["GameDifficulties"] = json::array({ { { "Difficulty", "normal" }, { "Bricks", json::array() } } });
     }
 
-    // Puriste « sans filet » : ni sauvegarde ni chargement, comme une cible fugitive.
-    if (p_Mode == EMode::Puriste) p_Donnees["EnableSaving"] = false;
+    // Sans filet, dans tous les modes (Julien, 25/11/2026) : ni sauvegarde ni
+    // chargement, comme une cible fugitive.
+    (void) p_Mode;
+    p_Donnees["EnableSaving"] = false;
 }
 
 const char* ImageComplication(const std::string& p_Cle) {
@@ -167,6 +169,8 @@ const char* ImageComplication(const std::string& p_Cle) {
     if (p_Cle == "aucun_changement") return "images/contractconditions/condition_contract_no_disguise_changes.jpg";
     if (p_Cle == "aucun_enregistrement") return "images/contracts/gamechangers/gamechanger_global_bigbrother.jpg";
     if (p_Cle == "tirs_tete") return "images/contractconditions/condition_contrac_headshots_only.jpg";
+    // Une rangée de balles, une tombée : l'image d'un palier d'escalade du jeu.
+    if (p_Cle == "ordre_impose") return "images/challenges/profile_challenges/escalation_s2_tier_5.jpg";
     return "";
 }
 
@@ -266,6 +270,7 @@ json ObjectifsRoulette(const STirage& p_Tirage, std::mt19937& p_Hasard, bool p_T
             }
 
             auto s_Objectif = Objectif(p_Hasard, s_Texte, { { "Context", json::object() }, { "States", std::move(s_Etats) } });
+            s_Objectif["Image"] = ImageComplication(s_Cle);
             s_Objectifs.push_back(std::move(s_Objectif));
             continue;
         }

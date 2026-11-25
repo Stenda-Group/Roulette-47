@@ -45,15 +45,17 @@ randomised contract — the way the community has played *Hitman roulette* for y
 | Mode | Outfit | Loadout | Kill methods | Complications |
 |---|---|---|---|---|
 | **Assassin** *(default)* | Agent 47's suit, from a suited start | Silenced Silverballer (variant drawn from the ones you own), fiber wire, your best lockpick | Pistol, fiber wire, accident, poison found on site | Realistic only: unseen, no bodies, no collateral, no cameras, no disguise change, headshots when a pistol is required, kill order |
-| **Purist** | Suit only | No gun — fiber wire and coins | Precise accidents (drowning, fall, electrocution, falling object, burn, explosion), poison or fiber wire | Always the five Silent Assassin, Suit Only requirements — and **no safety net**: no saving, no loading, one attempt per contract |
+| **Purist** | Suit only | No gun — fiber wire and coins | Precise accidents (drowning, fall, electrocution, falling object, burn, explosion), poison or fiber wire | Always the five Silent Assassin, Suit Only requirements |
 | **Freestyle** | Anything | Anything you own | Every method family you enable | Drawn at random, 0 to 3 |
 
-All modes draw **three targets at most**, and every contract is played on **Professional** difficulty.
+All modes draw **three targets at most** and **one to three complications** (Purist: always its five), every
+contract is played on **Professional** difficulty, and there is **no safety net**: saving is disabled for the whole
+mission, like an elusive target — one attempt per contract.
 
 - **Kill order enforced** — a complication (Assassin, Freestyle): the targets must die in the order shown on the
   sheet; killing one out of turn fails the contract.
-- **No safety net** (Purist) — saving is disabled for the whole mission, like an elusive target. The Purist card
-  keeps your **streak** of contracts completed in a row; a failure or an abandon sets it back to zero.
+- **Purist streak** — the Purist card keeps your **streak** of contracts completed in a row; a failure or an abandon
+  sets it back to zero.
 - **Fair starts** — if the drawn starting location puts 47 in plain sight, *Don't get spotted* is dropped instead
   of failing you in the first seconds, and is never drawn again with that starting location.
 - **Freestyle disguises** — when a target must be killed in a given disguise and one of your starting locations
@@ -116,11 +118,21 @@ and press **Load**: you get the same contract, ready to accept. The starting loc
 
 ### Settings on the sheet
 
-Besides the number of targets and complications, the **Settings** panel lets you:
+The **Settings** panel applies to every mode, within the limits of the chosen mode. Besides the number of targets
+and the maximum number of complications, it lets you:
 
 - untick **destinations** you do not want to be drawn (all ticked by default);
 - draw **mission targets only** — no NPCs (off by default: mission targets and NPCs are mixed);
-- tune Freestyle (method families, imposed method and outfit), the locked loadout, sounds and the automatic menus.
+- restrict the **method families**, and choose whether a method and an outfit are imposed;
+- show the roulette on **Discord** (on by default);
+- tune the locked loadout, sounds and the automatic menus.
+
+### Discord
+
+While you play a Roulette 47 contract, your Discord profile shows it — mode, location, targets left — and the
+presence disappears as soon as you leave the mission. The text follows the mod's language. Discord must be running
+on the same PC. If another mod also writes the game's presence (such as ZHMModSDK's *DiscordRichPresence*),
+Roulette 47 takes over while a contract is played and hands it back afterwards.
 
 ### Settings — `Retail\Roulette47\roulette47.ini`
 
@@ -132,7 +144,8 @@ Most settings live on the sheet (**Settings**). A few are only in the file:
 | `langue` | `fr` · `en` · `it` · `es` · `ru` | Forces the interface language (default: the game's language). |
 | `touche` | Windows virtual-key code | Key that opens the sheet (`120` = F9). |
 | `cibles_min`, `cibles_max` | `1`–`3` | Number of targets. |
-| `complications` | `0`–`3` | Complications drawn (Assassin and Freestyle). |
+| `complications` | `0`–`3` | Most complications drawn — the number is drawn between 1 and this (Assassin and Freestyle; `0`: none). |
+| `discord` | `0` · `1` | Discord Rich Presence. |
 | `cibles_du_jeu` | `0` · `1` | Mission targets only, no NPCs. |
 | `destinations_exclues` | comma-separated location ids | Destinations unticked on the sheet. |
 | `serie_puriste` | number | Current Purist streak. |

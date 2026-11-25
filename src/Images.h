@@ -35,6 +35,11 @@ public:
 
     [[nodiscard]] std::string DossierCache() const { return m_DossierCache; }
 
+    // Vrai si le service d'IOI n'a pas cette image (ni sa vignette de repli) :
+    // retenu de session en session (cache/introuvables.txt). Une cible sans
+    // photo n'est plus tirée (Julien, 25/11/2026).
+    [[nodiscard]] bool Introuvable(const std::string& p_Chemin);
+
 private:
     enum class EEtat { Attente, Fichier, Echec };
 
@@ -50,6 +55,7 @@ private:
     std::unordered_map<std::string, EEtat> m_Images;
     std::function<void()> m_QuandArrivee;
     std::unordered_map<std::string, std::string> m_Replis; // image → autre chemin à essayer
+    std::unordered_map<std::string, bool> m_Introuvables;  // chemins absents du service
     std::string m_UrlService;  // ex. https://…/resources-x-y
     std::string m_Signature;   // jeton SAS, jamais écrit dans le journal
     bool m_Arret = false;

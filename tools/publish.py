@@ -22,7 +22,7 @@ import urllib.request
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-OWNER, REPO = "Stenda-Group", "roulette47"
+OWNER, REPO = "Stenda-Group", "Roulette-47"
 KEEP = 3
 
 

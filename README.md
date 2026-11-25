@@ -4,7 +4,7 @@
 
 <br>
 
-[![Release](https://img.shields.io/github/v/release/Stenda-Group/roulette47?style=for-the-badge&color=e10a1e&labelColor=111113&label=release)](../../releases/latest)
+[![Release](https://img.shields.io/github/v/release/Stenda-Group/Roulette-47?style=for-the-badge&color=e10a1e&labelColor=111113&label=release)](../../releases/latest)
 ![Game](https://img.shields.io/badge/HITMAN-World%20of%20Assassination-e10a1e?style=for-the-badge&labelColor=111113)
 ![Platform](https://img.shields.io/badge/Windows-x64-f4f4f4?style=for-the-badge&labelColor=111113)
 ![Languages](https://img.shields.io/badge/UI-FR%20·%20EN%20·%20IT%20·%20ES%20·%20RU-9b9ba3?style=for-the-badge&labelColor=111113)

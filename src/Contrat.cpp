@@ -50,6 +50,31 @@ namespace {
         return Objectif(p_Hasard, p_Texte, { { "Context", json::object() }, { "States", std::move(s_Etats) } });
     }
 
+    // La méthode tirée, en condition sur l'événement « Kill ». Même règle que
+    // MethodeRespectee (Tirage.cpp), où chaque cas est expliqué : corde de piano
+    // dans l'un ou l'autre champ, mêlée en « melee_lethal », pistolet au corps à
+    // corps, coup porté avec un PM.
+    json ConditionMethode(const SMethode& m) {
+        const auto Ou = [](json p_Liste) { return json { { "$or", std::move(p_Liste) } }; };
+        const auto Et = [](json p_Liste) { return json { { "$and", std::move(p_Liste) } }; };
+
+        if (*m.m_Stricte) return Ou(json::array({ Egal("KillMethodStrict", m.m_Stricte), Egal("KillMethodBroad", m.m_Stricte) }));
+
+        const std::string s_Attendue = m.m_Large;
+        if (s_Attendue == "melee") {
+            json s_ArmesAFeu = json::array();
+            for (const char* c : { "pistol", "smg", "shotgun", "assaultrifle", "sniperrifle" }) s_ArmesAFeu.push_back(Egal("KillItemCategory", c));
+            return Et(json::array({ Ou(json::array({ Egal("KillMethodBroad", "melee_lethal"), Egal("KillMethodBroad", "melee") })),
+                                    { { "$not", Ou(std::move(s_ArmesAFeu)) } } }));
+        }
+        if (s_Attendue == "pistol") return Ou(json::array({ Egal("KillMethodBroad", "pistol"), Egal("KillMethodBroad", "close_combat_pistol_elimination") }));
+        if (s_Attendue == "smg") {
+            return Ou(json::array({ Egal("KillMethodBroad", "smg"),
+                                    Et(json::array({ Egal("KillMethodBroad", "melee_lethal"), Egal("KillItemCategory", "smg") })) }));
+        }
+        return Egal("KillMethodBroad", m.m_Large);
+    }
+
     const json c_Echec = json::array({ { { "Transition", "Failure" } } });
 
     const char* const c_Nul = "00000000-0000-0000-0000-000000000000";
@@ -193,12 +218,7 @@ json ObjectifsRoulette(const STirage& p_Tirage, std::mt19937& p_Hasard, bool p_T
 
         if (c.m_Methode >= 0) {
             const auto& m = Methodes()[c.m_Methode];
-            // Méthode « stricte » : dans l'un ou l'autre champ (corde de piano
-            // en 3.300 : KillMethodStrict vide, KillMethodBroad « fiberwire »).
-            // Même règle que AppliquerEvenement (Tirage.cpp).
-            s_Conditions.push_back(*m.m_Stricte
-                ? json { { "$or", json::array({ Egal("KillMethodStrict", m.m_Stricte), Egal("KillMethodBroad", m.m_Stricte) }) } }
-                : Egal("KillMethodBroad", m.m_Large));
+            s_Conditions.push_back(ConditionMethode(m));
             s_Consigne = Tx(std::string("methode.") + m.m_Cle);
         }
 

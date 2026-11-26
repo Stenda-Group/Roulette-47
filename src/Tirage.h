@@ -45,6 +45,11 @@ struct SMethode {
 
 const std::vector<SMethode>& Methodes();
 
+// La méthode tirée est-elle celle de l'élimination ? Champs de l'événement
+// « Kill » : KillMethodStrict, KillMethodBroad, KillItemCategory. Même règle
+// que ConditionMethode (Contrat.cpp), qui l'écrit dans l'objectif du contrat.
+bool MethodeRespectee(const SMethode& p_Methode, const std::string& p_Stricte, const std::string& p_Large, const std::string& p_Categorie);
+
 struct STenue {
     std::string m_Id;   // RepositoryId de la tenue (minuscules)
     std::string m_Nom;

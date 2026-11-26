@@ -101,6 +101,16 @@ target_include_directories(EssaiContrat PRIVATE src
     "${minhook_SOURCE_DIR}/src/hde" "${miniz_SOURCE_DIR}")
 target_link_libraries(EssaiContrat PRIVATE nlohmann_json::nlohmann_json)
 
+# ---------------------------------------------------------------- Essai des méthodes
+# La fiche et l'objectif du contrat rendent le même verdict pour chaque méthode
+# d'élimination (tools/essai_methodes.cpp).
+add_executable(EssaiMethodes tools/essai_methodes.cpp src/Contrat.cpp src/Menus.cpp src/Tirage.cpp src/Langue.cpp src/Glacier.cpp src/Depot.cpp src/Moteur.cpp
+    src/Diagnostic.cpp src/Http.cpp ${SOURCES_MINHOOK} "${miniz_SOURCE_DIR}/miniz.c")
+target_compile_options(EssaiMethodes PRIVATE /EHa)
+target_include_directories(EssaiMethodes PRIVATE src
+    "${minhook_SOURCE_DIR}/src/hde" "${miniz_SOURCE_DIR}")
+target_link_libraries(EssaiMethodes PRIVATE nlohmann_json::nlohmann_json)
+
 # ---------------------------------------------------------------- Essai des menus
 # Destinations, missions, préparation : lues et réécrites sur les vraies pages
 # relevées, hors du jeu (tools/essai_menus.cpp).

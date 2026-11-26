@@ -38,6 +38,32 @@ const std::vector<SMethode>& Methodes() {
     return s_Methodes;
 }
 
+namespace {
+    bool EstCategorieArmeAFeu(const std::string& p_Categorie) {
+        return p_Categorie == "pistol" || p_Categorie == "smg" || p_Categorie == "shotgun" ||
+               p_Categorie == "assaultrifle" || p_Categorie == "sniperrifle";
+    }
+}
+
+// Ce que le jeu envoie, d'après son propre vocabulaire (UI_KILL_METHOD_…) :
+// - une méthode « stricte » se lit dans l'un ou l'autre champ (la corde de
+//   piano arrive en 3.300 avec KillMethodStrict vide, KillMethodBroad « fiberwire ») ;
+// - une arme de mêlée arrive en « melee_lethal », jamais en « melee » : la
+//   bonne cible tuée au couteau faisait échouer le contrat ;
+// - un tir de pistolet au corps à corps arrive en « close_combat_pistol_elimination » ;
+// - un coup porté avec un pistolet-mitrailleur arrive en « melee_lethal », de
+//   catégorie « smg » : il compte pour le PM, pas pour l'arme de mêlée.
+// ConditionMethode (Contrat.cpp) écrit la même règle : changer l'une, changer l'autre.
+bool MethodeRespectee(const SMethode& p_Methode, const std::string& p_Stricte, const std::string& p_Large, const std::string& p_Categorie) {
+    if (*p_Methode.m_Stricte) return p_Stricte == p_Methode.m_Stricte || p_Large == p_Methode.m_Stricte;
+
+    const std::string s_Attendue = p_Methode.m_Large;
+    if (s_Attendue == "melee") return (p_Large == "melee_lethal" || p_Large == "melee") && !EstCategorieArmeAFeu(p_Categorie);
+    if (s_Attendue == "pistol") return p_Large == "pistol" || p_Large == "close_combat_pistol_elimination";
+    if (s_Attendue == "smg") return p_Large == "smg" || (p_Large == "melee_lethal" && p_Categorie == "smg");
+    return p_Large == s_Attendue;
+}
+
 const char* CleMode(EMode p_Mode) {
     switch (p_Mode) {
         case EMode::Puriste: return "puriste";
@@ -384,13 +410,8 @@ bool AppliquerEvenement(STirage& p_Tirage, const std::string& p_Nom, const nlohm
 
             if (s_Cible.m_Methode >= 0) {
                 const auto& s_Methode = Methodes()[s_Cible.m_Methode];
-                // Une méthode « stricte » se lit dans l'un OU l'autre champ : en
-                // 3.300, la corde de piano arrive avec KillMethodStrict vide et
-                // KillMethodBroad « fiberwire » (Julien, 26/11/2026 : bonne
-                // cible, bonne corde, contrat rompu).
-                const bool s_Ok = *s_Methode.m_Stricte
-                                      ? (s_Stricte == s_Methode.m_Stricte || s_Large == s_Methode.m_Stricte)
-                                      : s_Large == s_Methode.m_Large;
+                // Corde de piano, mêlée, pistolet au corps à corps : voir MethodeRespectee.
+                const bool s_Ok = MethodeRespectee(s_Methode, s_Stricte, s_Large, ChampTexte(p_Valeur, "KillItemCategory"));
 
                 if (!s_Ok) {
                     s_Detail = TxF("detail.methode", s_Stricte.empty() ? s_Large : s_Stricte);

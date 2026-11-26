@@ -227,7 +227,7 @@ void Roulette::RenommerAnciensFichiers() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.22 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v0.23 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
     RenommerAnciensFichiers();
 

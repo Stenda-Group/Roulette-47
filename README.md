@@ -14,6 +14,11 @@
 
 </div>
 
+> [!NOTE]
+> **Public beta.** Roulette 47 works and is played daily, but it has only been tested on a few machines so far. If
+> something looks wrong, please [open an issue](../../issues) and attach `Retail\Roulette47\diagnostic.log` — see
+> [Reporting a problem](#reporting-a-problem).
+
 ---
 
 ## What is Roulette 47?
@@ -100,6 +105,14 @@ mission, like an elusive target — one attempt per contract.
 > the first time the game starts.
 >
 > No modding framework is required, and Roulette 47 lives side by side with other mods.
+>
+> **Steam only.** The Epic Games Store and Xbox / Game Pass versions are not supported.
+
+> [!IMPORTANT]
+> **Antivirus warnings.** `version.dll` is an unsigned loader that the game picks up by itself and that hooks into the
+> game's code in memory — exactly the pattern some antivirus heuristics flag, so a false positive is possible. Only
+> download Roulette 47 from this repository's [releases](../../releases); the code is public, and every release
+> lists the SHA-256 of its archive so you can check what you got.
 
 **Uninstall:** delete `Retail\version.dll` and the `Retail\Roulette47` folder.
 
@@ -165,6 +178,31 @@ Most settings live on the sheet (**Settings**). A few are only in the file:
 | `destinations_exclues` | comma-separated location ids | Destinations unticked on the sheet. |
 | `serie_puriste` | number | Current Purist streak. |
 | `outils_developpement` | `0` · `1` | Opens the WebView2 developer tools. |
+| `releve` | `0` · `1` | Development only: saves the server's menu pages and contracts in `reponses\` (never login tokens, never your profile). Off by default. |
+| `journal_evenements` | `0` · `1` | Development only: logs game events in `evenements.log`. Off by default. |
+
+### What the mod keeps on your PC
+
+Everything stays in `Retail\Roulette47\`; nothing is sent anywhere except the game's own requests to IOI's servers
+and image downloads from IOI's image service.
+
+| File | Contents |
+|---|---|
+| `roulette47.ini` | Your settings and Purist streak. |
+| `destinations.json`, `lieux\`, `noms.json` | Locations, missions, NPCs and item names learned from the game. |
+| `cache\` | Images downloaded from the game's image service. |
+| `webview\` | The overlay's browser data. |
+| `diagnostic.log` | What the mod did during the last session — no account name, Steam ID or token (only the game's install path). Rewritten at every start. |
+
+From v0.20 on, the development logs (`reponses\`, `evenements.log`) are off and the files left by earlier versions
+are deleted at start-up. Up to v0.19, `reponses\` could hold a copy of your game profile (Steam ID, gamertag):
+do not share that folder from an older version.
+
+### Reporting a problem
+
+Open an [issue](../../issues) with what you did, what you expected and what happened, and attach
+`Retail\Roulette47\diagnostic.log` from the session where it went wrong (it is rewritten at every start). A
+screenshot of the sheet helps too.
 
 ## Under the hood
 

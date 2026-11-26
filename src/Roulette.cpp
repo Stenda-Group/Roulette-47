@@ -198,7 +198,7 @@ void Roulette::ReprendreAncienDossier() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.19 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v0.20 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
 
     if (!Moteur::Resoudre()) {
@@ -228,11 +228,18 @@ void Roulette::Demarrer() {
         m_Fenetre.Pousser();
     });
 
-    // Journal des événements, pour caler les valeurs du jeu. Repart à zéro au-delà de 2 Mo.
+    // Journal des événements, pour caler les valeurs du jeu (« journal_evenements=1 »
+    // du .ini : coupé chez les joueurs, et celui d'une version précédente effacé).
+    // Repart à zéro au-delà de 2 Mo.
     const auto s_Chemin = std::filesystem::path(DossierDuMod()) / "evenements.log";
     std::error_code s_Erreur;
-    const bool s_Trop = std::filesystem::exists(s_Chemin) && std::filesystem::file_size(s_Chemin, s_Erreur) > 2'000'000;
-    m_Journal.open(s_Chemin, s_Trop ? std::ios::trunc : std::ios::app);
+    if (m_JournalEvenements) {
+        const bool s_Trop = std::filesystem::exists(s_Chemin) && std::filesystem::file_size(s_Chemin, s_Erreur) > 2'000'000;
+        m_Journal.open(s_Chemin, s_Trop ? std::ios::trunc : std::ios::app);
+    }
+    else {
+        std::filesystem::remove(s_Chemin, s_Erreur);
+    }
 
     Fenetre::SParametres s_Parametres;
     s_Parametres.m_DossierUi = Large(DossierDuMod() + "\\ui");
@@ -250,8 +257,10 @@ void Roulette::Demarrer() {
     // (Le relevé des pages de menu par ZDynamicPageController::Expand est
     // retiré : il n'a jamais rien reçu, tout passe par les réponses du serveur.)
 
-    // Relevé des réponses du serveur (pages des menus, contrat) : c'est d'elles
-    // que viendront la destination tirée au sort et l'échec « vanilla ».
+    // Réponses du serveur (pages des menus, contrat) : c'est d'elles que
+    // viennent la destination tirée au sort et l'échec « vanilla ». Leur relevé
+    // sur le disque n'a lieu qu'avec « releve=1 » ; le dossier est vidé à chaque
+    // lancement dans tous les cas (relevés d'une version précédente compris).
     std::filesystem::remove_all(std::filesystem::path(DossierDuMod()) / "reponses", s_Erreur);
     Moteur::CapterReponses(&Roulette::SurReponse);
 
@@ -339,6 +348,8 @@ void Roulette::ChargerReglages() {
     }
     m_Touche = Lire(L"touche", VK_F9);
     m_OutilsDeveloppement = Lire(L"outils_developpement", 0) != 0;
+    m_ReleverReponses = Lire(L"releve", 0) != 0;
+    m_JournalEvenements = Lire(L"journal_evenements", 0) != 0;
 }
 
 void Roulette::EnregistrerReglages() {
@@ -443,14 +454,17 @@ bool Roulette::ReleverReponse(const uint8_t* p_Octets, size_t p_Taille, std::str
             }
         }
 
-        if (s_Numero > 150) return s_Modifiee;
+        // Relevé sur le disque : outil de développement (« releve=1 »).
+        if (!m_ReleverReponses || s_Numero > 150) return s_Modifiee;
 
-        // Jamais de jeton d'authentification sur le disque. On cherche les CLÉS
-        // (« "access_token" », « "token": ») : les objets du jeu ont des champs
-        // « TokenID » ou « OutfitToken » sans rien de secret (la v0.4.1 écartait
-        // tout texte contenant « token », donc les pages des menus).
+        // Jamais de jeton d'authentification ni d'identité sur le disque. On
+        // cherche les CLÉS (« "access_token" », « "token": ») : les objets du jeu
+        // ont des champs « TokenID » ou « OutfitToken » sans rien de secret (la
+        // v0.4.1 écartait tout texte contenant « token », donc les pages des
+        // menus). La réponse de profil porte SteamId, gamertag et adresse.
         const auto s_Bas = EnMinuscules(s_Texte);
-        for (const char* s_Cle : { "_token\"", "\"token\"", "authorization", "password", "\"ticket\"" }) {
+        for (const char* s_Cle : { "_token\"", "\"token\"", "authorization", "password", "\"ticket\"",
+                                   "\"steamid\"", "\"epicid\"", "\"gamertag\"", "\"email\"", "\"amazonid\"" }) {
             if (s_Bas.find(s_Cle) != std::string::npos) {
                 Diag("Réponse n° {} : {} octets, non écrite (jeton).", s_Numero, s_Texte.size());
                 return s_Modifiee;

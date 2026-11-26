@@ -183,6 +183,12 @@ private:
     bool m_Encart = true;
     int m_Touche = VK_F9;
     bool m_OutilsDeveloppement = false;
+    // Outils de développement, coupés chez les joueurs (v0.20) : le relevé des
+    // réponses du serveur (« releve ») et le journal des événements
+    // (« journal_evenements »). Le premier écrivait la réponse de profil
+    // (SteamId, gamertag, adresse) sur le disque de chacun.
+    bool m_ReleverReponses = false;
+    bool m_JournalEvenements = false;
 
     std::atomic<int> m_ImagesArrivees = 0;
     double m_DernierService = -100.0;

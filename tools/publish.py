@@ -6,6 +6,7 @@
 - the archive roulette47-v0.13.zip is built from build/ and ui/ with the game
   folder layout (Retail/version.dll, Retail/Roulette47/...);
 - the release is created on the tag (the commit must already be pushed);
+- the SHA-256 of the archive is appended to the notes;
 - only the three most recent releases are kept: older releases are deleted,
   together with their tags.
 
@@ -13,6 +14,7 @@ The GitHub token comes from `git credential fill`; it is never printed.
 Build first (tools/compiler.cmd).
 """
 import argparse
+import hashlib
 import json
 import pathlib
 import subprocess
@@ -90,7 +92,15 @@ def main():
     tag = "v" + version
     notes = pathlib.Path(a.notes_file).read_text(encoding="utf-8")
     archive = build_archive(version)
-    print(f"archive {archive.name} ({archive.stat().st_size // 1024} KB)")
+    sha = hashlib.sha256(archive.read_bytes()).hexdigest()
+    print(f"archive {archive.name} ({archive.stat().st_size // 1024} KB), SHA-256 {sha}")
+    # The checksum goes at the end of the notes, so anyone can check the download.
+    notes = notes.rstrip() + f"
+
+## Checksum
+
+`{archive.name}` — SHA-256 `{sha}`
+"
     if a.dry_run:
         return
 

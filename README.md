@@ -100,21 +100,11 @@ mission, like an elusive target — one attempt per contract.
 
 3. Start the game and press **F9** in the menus.
 
-> **Requirements:** Windows 10/11 x64 and the Microsoft Edge WebView2 Runtime, which ships with Windows 11 and comes with
-> Edge on Windows 10. If it is missing, Roulette 47 offers to download and install it (official Microsoft installer)
-> the first time the game starts.
->
 > No modding framework is required, and Roulette 47 lives side by side with other mods.
 >
 > **Tested on Steam.** The Epic Games Store and Xbox / Game Pass versions have not been tried yet: if you play
 > there, your feedback is welcome. If the mod does not recognise your version of the game, it stays inactive and
 > says so in `diagnostic.log` rather than risking a crash.
-
-> [!IMPORTANT]
-> **Antivirus warnings.** `version.dll` is an unsigned loader that the game picks up by itself and that hooks into the
-> game's code in memory — exactly the pattern some antivirus heuristics flag, so a false positive is possible. Only
-> download Roulette 47 from this repository's [releases](../../releases); the code is public, and every release
-> lists the SHA-256 of its archive so you can check what you got.
 
 **Uninstall:** delete `Retail\version.dll` and the `Retail\Roulette47` folder.
 
@@ -125,9 +115,6 @@ mission, like an elusive target — one attempt per contract.
 | **F9** | Open or close the contract sheet (mouse and keyboard go to the sheet while it is open; the game keeps running and its music keeps playing, but the mouse no longer turns the camera). |
 | **Esc** | Close the sheet. |
 | In mission | The sheet shows each target, its method and outfit, the complications and the loadout, updated live. |
-
-The first time you play a level, the mod records the NPCs present in it; from then on they can be drawn as targets
-for that mission, alongside the mission's own targets.
 
 ### Estimated difficulty
 
@@ -184,63 +171,11 @@ a `roulette47.ini` from an earlier version (French keys) is converted at start-u
 | `dump_responses` | `0` · `1` | Development only: saves the server's menu pages and contracts in `responses\` (never login tokens, never your profile). Off by default. |
 | `log_events` | `0` · `1` | Development only: logs game events in `events.log`. Off by default. |
 
-### What the mod keeps on your PC
-
-Everything stays in `Retail\Roulette47\`; nothing is sent anywhere except the game's own requests to IOI's servers
-and image downloads from IOI's image service.
-
-| File | Contents |
-|---|---|
-| `roulette47.ini` | Your settings and Purist streak. |
-| `destinations.json`, `locations\`, `initial_locations\`, `names.json` | Locations, missions, NPCs and item names learned from the game. |
-| `cache\` | Images downloaded from the game's image service. |
-| `webview\` | The overlay's browser data. |
-| `diagnostic.log` | What the mod did during the last session — no account name, Steam ID or token (only the game's install path). Rewritten at every start. |
-
-From v0.20 on, the development logs (`responses\`, `events.log`) are off and the files left by earlier versions
-are deleted at start-up. Up to v0.19, `reponses\` could hold a copy of your game profile (Steam ID, gamertag):
-do not share that folder from an older version.
-
 ### Reporting a problem
 
 Open an [issue](../../issues) with what you did, what you expected and what happened, and attach
 `Retail\Roulette47\diagnostic.log` from the session where it went wrong (it is rewritten at every start). A
 screenshot of the sheet helps too.
-
-## Under the hood
-
-<details>
-<summary><b>How the mod works</b> (click to expand)</summary>
-
-<br>
-
-- **Loader.** `version.dll` is a proxy for the system DLL of the same name: the game loads it at start-up, it
-  forwards every call to the real one and loads `Roulette47\Roulette47.dll`.
-- **Engine access without any framework.** The functions the mod needs (event dispatch, text lookup, HTTP results,
-  menu actions, page navigation…) are located by byte signatures at start-up, and the engine data it reads is
-  described in its own read-only views (`src/Glacier.h`). Hooks are written into the padding between the game's
-  functions or into an allocated trampoline; nothing on disk is modified.
-- **Server responses rewritten in memory.** Menu pages and contracts arrive as JSON from IOI's servers. The mod
-  reads destinations, missions, inventory and unlocked starting locations from them, and rewrites the contract it
-  receives: the roulette objectives are added as state machines (`Kill` with `KillMethodStrict`/`Broad` and outfit
-  conditions, failure on the first wrong kill), the original objectives are hidden, and `Entrances` keeps the drawn
-  starting location. The loadout is locked by trimming each slot's item list to the drawn item (the suit list is
-  left whole); for a start in a disguise, `MandatoryLoadout` removes the planning screen like the game's own special
-  missions. A `MandatoryLoadout` is not used otherwise: it replaces the whole loadout, suit included.
-- **Opening the planning screen.** Menu actions are objects (`ZLink@JSONTemplate`…). The mod captures the menu
-  navigator from the first link the game executes, then builds the same page request the game builds for a mission
-  tile (`planning` + `contractid`) with the game's own JSON reader, on the game thread.
-- **Starting location.** Choosing an entrance only writes three globals that the contract start reads back; the mod
-  writes the drawn entrance there, so the game starts where the roulette decided.
-- **NPC targets everywhere.** The named NPCs and disguises of a location are recorded whenever you play it; the mod
-  also ships a recording of every story location (`initial_locations`), so even a mission you have never played can
-  draw NPC targets.
-- **Names in your language.** Item and location names come from the game's own localisation (two text keys per
-  item), learned whenever the game has them loaded and kept in `names.json`.
-- **Interface.** A WebView2 overlay (HTML/CSS/JS, `ui/`) above the game window; game images are downloaded from
-  the game's own image service at run time and cached locally. No game asset ships with the mod.
-
-</details>
 
 ## Building from source
 

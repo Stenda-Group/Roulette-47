@@ -621,6 +621,15 @@ const roulette = (() => {
       }
     };
     segments('nb-complications', 'complications', 0, 3);
+
+    // Langue de la fiche : celle du jeu par défaut, ou imposée.
+    const langues = $('langue-reglage');
+    langues.replaceChildren();
+    [['jeu', t('langue_jeu')], ['fr', 'FR'], ['en', 'EN'], ['it', 'IT'], ['es', 'ES'], ['ru', 'RU']].forEach(([code, nom]) => {
+      const b = el('button', (r.langue || 'jeu') === code ? 'actif' : '', nom);
+      b.onclick = () => envoyer({ action: 'reglage', cle: 'langue', valeur: code });
+      langues.append(b);
+    });
     segments('nb-cibles-min', 'ciblesMin', 1, 3);
     segments('nb-cibles-max', 'ciblesMax', 1, 3);
 

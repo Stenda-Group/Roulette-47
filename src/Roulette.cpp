@@ -227,7 +227,7 @@ void Roulette::RenommerAnciensFichiers() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.21 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v0.22 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
     RenommerAnciensFichiers();
 
@@ -414,6 +414,7 @@ void Roulette::ChargerReglages() {
         ELangue s_Langue = ELangue::Fr;
         if (LangueDepuisCode(s_Texte, s_Langue)) {
             m_LangueImposee = true;
+            m_LangueChoisie = CodeLangue(s_Langue);
             Diag("Langue imposée par roulette47.ini : {}.", CodeLangue(s_Langue));
         }
         else if (LangueDeSteam(DossierDuMod(), s_Langue)) {
@@ -478,6 +479,15 @@ void Roulette::EnregistrerReglages() {
 
     Ecrire(L"mission_overlay", s_Encart);
     Ecrire(L"key", m_Touche);
+    {
+        // Langue de la fiche : vide = celle du jeu.
+        std::string s_Langue;
+        {
+            std::lock_guard s_Verrou(m_Verrou);
+            s_Langue = m_LangueChoisie;
+        }
+        WritePrivateProfileStringW(L"roulette", L"language", Large(s_Langue).c_str(), s_Fichier.c_str());
+    }
 }
 
 // ------------------------------------------------------------ Thread du jeu
@@ -794,20 +804,22 @@ bool Roulette::ChargerMemoireLieu(const std::string& p_Lieu, STirage& p_Tirage, 
 
 // ------------------------------------------------------------ Pages des menus
 
-// La langue du jeu, lue dans ses propres textes : le nom des États-Unis.
+// La langue du jeu, lue dans ses propres textes : le nom des États-Unis. Relue
+// à chaque page des menus : le joueur peut changer la langue du jeu en cours de
+// partie (Julien, 26/11/2026 : jeu repassé en français, fiche restée en anglais).
 void Roulette::DetecterLangueDuJeu() {
-    if (m_LangueImposee || m_LangueDuJeuLue) return;
+    if (m_LangueImposee) return;
 
     ELangue s_Langue = ELangue::Fr;
     if (!LangueDepuisTexteDuJeu(Moteur::Traduire("UI_LOCATION_COLORADO_COUNTRY"), s_Langue)) return;
 
-    m_LangueDuJeuLue = true;
+    const bool s_Premiere = !m_LangueDuJeuLue.exchange(true);
     if (s_Langue != Langue()) {
         Diag("Langue du jeu : {} (au lieu de {}).", CodeLangue(s_Langue), CodeLangue(Langue()));
         DefinirLangue(s_Langue);
         m_Fenetre.Pousser();
     }
-    else {
+    else if (s_Premiere) {
         Diag("Langue du jeu : {}.", CodeLangue(s_Langue));
     }
 }
@@ -2775,6 +2787,7 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
         { "sons", m_Reglages.m_Sons },
         { "pilote", m_Reglages.m_Pilote },
         { "familles", s_Familles },
+        { "langue", m_LangueChoisie.empty() ? std::string("jeu") : m_LangueChoisie },
     };
 
     // Ce qui défile pendant l'animation du tirage.
@@ -2900,11 +2913,28 @@ void Roulette::MessagePage(const std::string& p_Json) {
     else if (s_Action == "reglage") {
         const auto s_Cle = ChampTexte(s_Message, "cle");
         const auto& s_Valeur = s_Message["valeur"];
+        bool s_RelireLangue = false;
 
         {
             std::lock_guard s_Verrou(m_Verrou);
 
-            if (s_Cle == "mode" && s_Valeur.is_string()) m_Reglages.m_Mode = ModeDepuisCle(s_Valeur.get<std::string>());
+            // Langue de la fiche : « jeu » (défaut) suit la langue du jeu ;
+            // fr, en, it, es, ru l'imposent (Julien, 26/11/2026).
+            if (s_Cle == "langue" && s_Valeur.is_string()) {
+                ELangue s_Langue = ELangue::Fr;
+                if (LangueDepuisCode(s_Valeur.get<std::string>(), s_Langue)) {
+                    m_LangueChoisie = CodeLangue(s_Langue);
+                    m_LangueImposee = true;
+                    DefinirLangue(s_Langue);
+                }
+                else {
+                    m_LangueChoisie.clear();
+                    m_LangueImposee = false;
+                    s_RelireLangue = true;
+                }
+                Diag("Langue de la fiche : {}.", m_LangueChoisie.empty() ? std::string("celle du jeu") : m_LangueChoisie);
+            }
+            else if (s_Cle == "mode" && s_Valeur.is_string()) m_Reglages.m_Mode = ModeDepuisCle(s_Valeur.get<std::string>());
             else if (s_Cle == "imposerMethode") m_Reglages.m_ImposerMethode = s_Valeur.is_boolean() && s_Valeur.get<bool>();
             else if (s_Cle == "imposerTenue") m_Reglages.m_ImposerTenue = s_Valeur.is_boolean() && s_Valeur.get<bool>();
             else if (s_Cle == "costume") m_Reglages.m_AutoriserCostume = s_Valeur.is_boolean() && s_Valeur.get<bool>();
@@ -2949,6 +2979,7 @@ void Roulette::MessagePage(const std::string& p_Json) {
             }
         }
 
+        if (s_RelireLangue) DetecterLangueDuJeu();
         EnregistrerReglages();
         m_Fenetre.Pousser();
     }

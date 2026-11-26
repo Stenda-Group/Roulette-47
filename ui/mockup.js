@@ -162,6 +162,7 @@
     if (m.action === 'fermer') etat.ouverte = false;
     if (m.action === 'reglage') {
       if (m.cle === 'famille') etat.reglages.familles[m.index] = m.valeur;
+      else if (m.cle === 'langue') { etat.reglages.langue = m.valeur; etat.langue = m.valeur === 'jeu' ? (new URLSearchParams(location.search).get('langue') || 'fr') : m.valeur; }
       else etat.reglages[m.cle] = m.valeur;
     }
     pousser();

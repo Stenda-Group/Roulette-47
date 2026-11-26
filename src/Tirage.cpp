@@ -384,7 +384,13 @@ bool AppliquerEvenement(STirage& p_Tirage, const std::string& p_Nom, const nlohm
 
             if (s_Cible.m_Methode >= 0) {
                 const auto& s_Methode = Methodes()[s_Cible.m_Methode];
-                const bool s_Ok = *s_Methode.m_Stricte ? s_Stricte == s_Methode.m_Stricte : s_Large == s_Methode.m_Large;
+                // Une méthode « stricte » se lit dans l'un OU l'autre champ : en
+                // 3.300, la corde de piano arrive avec KillMethodStrict vide et
+                // KillMethodBroad « fiberwire » (Julien, 26/11/2026 : bonne
+                // cible, bonne corde, contrat rompu).
+                const bool s_Ok = *s_Methode.m_Stricte
+                                      ? (s_Stricte == s_Methode.m_Stricte || s_Large == s_Methode.m_Stricte)
+                                      : s_Large == s_Methode.m_Large;
 
                 if (!s_Ok) {
                     s_Detail = TxF("detail.methode", s_Stricte.empty() ? s_Large : s_Stricte);

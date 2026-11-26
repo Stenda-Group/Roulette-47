@@ -469,6 +469,7 @@ kbd {
 .segments { display: flex; }
 .segments button { width: 38px; height: 32px; font-weight: 700; background: var(--carte-2); border-right: 1px solid var(--noir); }
 .segments button.actif { background: var(--rouge); }
+.segments--texte button { width: auto; min-width: 38px; padding: 0 10px; }
 .puces { display: flex; flex-wrap: wrap; gap: 6px; }
 .puces button {
   display: inline-flex; align-items: center; gap: 8px;

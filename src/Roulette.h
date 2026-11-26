@@ -216,6 +216,7 @@ private:
 
     std::atomic<bool> m_LangueImposee = false; // « langue= » dans roulette.ini
     std::atomic<bool> m_LangueDuJeuLue = false;
+    std::string m_LangueChoisie;     // réglage « Langue » de la fiche : "" = celle du jeu, sinon fr, en…
 
     std::mutex m_VerrouJournal;
     std::ofstream m_Journal;

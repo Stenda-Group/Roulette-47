@@ -193,7 +193,12 @@ json ObjectifsRoulette(const STirage& p_Tirage, std::mt19937& p_Hasard, bool p_T
 
         if (c.m_Methode >= 0) {
             const auto& m = Methodes()[c.m_Methode];
-            s_Conditions.push_back(*m.m_Stricte ? Egal("KillMethodStrict", m.m_Stricte) : Egal("KillMethodBroad", m.m_Large));
+            // Méthode « stricte » : dans l'un ou l'autre champ (corde de piano
+            // en 3.300 : KillMethodStrict vide, KillMethodBroad « fiberwire »).
+            // Même règle que AppliquerEvenement (Tirage.cpp).
+            s_Conditions.push_back(*m.m_Stricte
+                ? json { { "$or", json::array({ Egal("KillMethodStrict", m.m_Stricte), Egal("KillMethodBroad", m.m_Stricte) }) } }
+                : Egal("KillMethodBroad", m.m_Large));
             s_Consigne = Tx(std::string("methode.") + m.m_Cle);
         }
 

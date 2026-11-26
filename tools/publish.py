@@ -95,12 +95,7 @@ def main():
     sha = hashlib.sha256(archive.read_bytes()).hexdigest()
     print(f"archive {archive.name} ({archive.stat().st_size // 1024} KB), SHA-256 {sha}")
     # The checksum goes at the end of the notes, so anyone can check the download.
-    notes = notes.rstrip() + f"
-
-## Checksum
-
-`{archive.name}` — SHA-256 `{sha}`
-"
+    notes = notes.rstrip() + f"\n\n## Checksum\n\n`{archive.name}` — SHA-256 `{sha}`\n"
     if a.dry_run:
         return
 

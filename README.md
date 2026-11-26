@@ -106,7 +106,9 @@ mission, like an elusive target — one attempt per contract.
 >
 > No modding framework is required, and Roulette 47 lives side by side with other mods.
 >
-> **Steam only.** The Epic Games Store and Xbox / Game Pass versions are not supported.
+> **Tested on Steam.** The Epic Games Store and Xbox / Game Pass versions have not been tried yet: if you play
+> there, your feedback is welcome. If the mod does not recognise your version of the game, it stays inactive and
+> says so in `diagnostic.log` rather than risking a crash.
 
 > [!IMPORTANT]
 > **Antivirus warnings.** `version.dll` is an unsigned loader that the game picks up by itself and that hooks into the
@@ -263,7 +265,8 @@ kept, older ones are deleted with their tags.
 
 ## Compatibility
 
-- Built and tested on the **Steam** version of HITMAN: World of Assassination, online.
+- Built and tested on the **Steam** version of HITMAN: World of Assassination, online. Epic Games Store and
+  Xbox / Game Pass: not tested yet.
 - A game update can move the code the mod looks for: the mod then stays inactive and says so in
   `Retail\Roulette47\diagnostic.log` rather than risking a crash.
 - Elusive targets are never touched.

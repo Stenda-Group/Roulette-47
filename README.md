@@ -166,22 +166,23 @@ Roulette 47 takes over while a contract is played and hands it back afterwards.
 
 ### Settings — `Retail\Roulette47\roulette47.ini`
 
-Most settings live on the sheet (**Settings**). A few are only in the file:
+Most settings live on the sheet (**Settings**). A few are only in the file. Since v0.20 the keys are in English;
+a `roulette47.ini` from an earlier version (French keys) is converted at start-up, values kept.
 
 | Key | Values | |
 |---|---|---|
 | `mode` | `0` Assassin · `1` Purist · `2` Freestyle | Also set on the sheet's home screen. |
-| `langue` | `fr` · `en` · `it` · `es` · `ru` | Forces the interface language (default: the game's language). |
-| `touche` | Windows virtual-key code | Key that opens the sheet (`120` = F9). |
-| `cibles_min`, `cibles_max` | `1`–`3` | Number of targets. |
+| `language` | `fr` · `en` · `it` · `es` · `ru` | Forces the interface language (default: the game's language). |
+| `key` | Windows virtual-key code | Key that opens the sheet (`120` = F9). |
+| `targets_min`, `targets_max` | `1`–`3` | Number of targets. |
 | `complications` | `0`–`3` | Most complications drawn — the number is drawn between 1 and this (Assassin and Freestyle; `0`: none). |
 | `discord` | `0` · `1` | Discord Rich Presence. |
-| `cibles_du_jeu` | `0` · `1` | Mission targets only, no NPCs. |
-| `destinations_exclues` | comma-separated location ids | Destinations unticked on the sheet. |
-| `serie_puriste` | number | Current Purist streak. |
-| `outils_developpement` | `0` · `1` | Opens the WebView2 developer tools. |
-| `releve` | `0` · `1` | Development only: saves the server's menu pages and contracts in `responses\` (never login tokens, never your profile). Off by default. |
-| `journal_evenements` | `0` · `1` | Development only: logs game events in `events.log`. Off by default. |
+| `mission_targets_only` | `0` · `1` | Mission targets only, no NPCs. |
+| `excluded_destinations` | comma-separated location ids | Destinations unticked on the sheet. |
+| `purist_streak` | number | Current Purist streak. |
+| `dev_tools` | `0` · `1` | Opens the WebView2 developer tools. |
+| `dump_responses` | `0` · `1` | Development only: saves the server's menu pages and contracts in `responses\` (never login tokens, never your profile). Off by default. |
+| `log_events` | `0` · `1` | Development only: logs game events in `events.log`. Off by default. |
 
 ### What the mod keeps on your PC
 

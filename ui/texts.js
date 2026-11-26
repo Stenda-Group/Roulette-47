@@ -2,7 +2,7 @@
 //
 // La langue vient du mod (etat.langue) : celle du jeu, lue dans ses propres
 // textes, sinon celle de Steam ou de Windows, ou celle imposée par
-// « langue= » dans roulette47.ini. Ce qui vient du jeu (cibles, objets, lieux,
+// « language= » dans roulette47.ini. Ce qui vient du jeu (cibles, objets, lieux,
 // missions) est déjà dans sa langue et ne passe pas par ici.
 //
 // Dans la page : data-t="cle" (texte), data-t-html (avec balises),

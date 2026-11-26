@@ -73,7 +73,8 @@ private:
 
     void ChargerReglages();
     void ReprendreAncienDossier();
-    void RenommerAnciensFichiers(); // Retail\Roulette (v0.12 et avant) → Retail\Roulette47
+    void RenommerAnciensFichiers();
+    void MigrerReglages(const std::wstring& p_Fichier); // Retail\Roulette (v0.12 et avant) → Retail\Roulette47
     void DetecterLangueDuJeu(); // dès que les textes du jeu sont chargés
     void EnregistrerReglages();
 
@@ -185,8 +186,8 @@ private:
     int m_Touche = VK_F9;
     bool m_OutilsDeveloppement = false;
     // Outils de développement, coupés chez les joueurs (v0.20) : le relevé des
-    // réponses du serveur (« releve ») et le journal des événements
-    // (« journal_evenements »). Le premier écrivait la réponse de profil
+    // réponses du serveur (« dump_responses ») et le journal des événements
+    // (« log_events »). Le premier écrivait la réponse de profil
     // (SteamId, gamertag, adresse) sur le disque de chacun.
     bool m_ReleverReponses = false;
     bool m_JournalEvenements = false;

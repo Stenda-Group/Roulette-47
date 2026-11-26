@@ -258,7 +258,7 @@ void Roulette::Demarrer() {
         m_Fenetre.Pousser();
     });
 
-    // Journal des événements, pour caler les valeurs du jeu (« journal_evenements=1 »
+    // Journal des événements, pour caler les valeurs du jeu (« log_events=1 »
     // du .ini : coupé chez les joueurs, et celui d'une version précédente effacé).
     // Repart à zéro au-delà de 2 Mo.
     const auto s_Chemin = std::filesystem::path(DossierDuMod()) / "events.log";
@@ -289,7 +289,7 @@ void Roulette::Demarrer() {
 
     // Réponses du serveur (pages des menus, contrat) : c'est d'elles que
     // viennent la destination tirée au sort et l'échec « vanilla ». Leur relevé
-    // sur le disque n'a lieu qu'avec « releve=1 » ; le dossier est vidé à chaque
+    // sur le disque n'a lieu qu'avec « dump_responses=1 » ; le dossier est vidé à chaque
     // lancement dans tous les cas (relevés d'une version précédente compris).
     std::filesystem::remove_all(std::filesystem::path(DossierDuMod()) / "responses", s_Erreur);
     Moteur::CapterReponses(&Roulette::SurReponse);
@@ -305,8 +305,57 @@ void Roulette::Demarrer() {
 
 // ------------------------------------------------------------ Réglages
 
+// Clés de roulette47.ini en anglais (v0.20, Julien : le fichier est lu par les
+// joueurs). Une clé française d'une version précédente est recopiée sous son
+// nouveau nom, puis effacée ; une clé déjà présente sous le nouveau nom gagne.
+void Roulette::MigrerReglages(const std::wstring& p_Fichier) {
+    static const std::pair<const wchar_t*, const wchar_t*> c_Cles[] = {
+        { L"imposer_methode", L"enforce_method" },
+        { L"imposer_tenue", L"enforce_outfit" },
+        { L"costume", L"allow_suit" },
+        { L"tirage_sans_contrat", L"draw_without_contract" },
+        { L"pnj", L"npc_targets" },
+        { L"echec_impose", L"enforce_failure" },
+        { L"imposer_preparation", L"lock_planning" },
+        { L"cibles_du_jeu", L"mission_targets_only" },
+        { L"serie_puriste", L"purist_streak" },
+        { L"destinations_exclues", L"excluded_destinations" },
+        { L"cibles_min", L"targets_min" },
+        { L"cibles_max", L"targets_max" },
+        { L"remplacer_objectifs", L"replace_objectives" },
+        { L"destination_auto", L"auto_destination" },
+        { L"sons", L"sounds" },
+        { L"pilote", L"menu_autopilot" },
+        { L"encart", L"mission_overlay" },
+        { L"langue", L"language" },
+        { L"touche", L"key" },
+        { L"outils_developpement", L"dev_tools" },
+        { L"releve", L"dump_responses" },
+        { L"journal_evenements", L"log_events" },
+    };
+    int n = 0;
+    const auto Reprendre = [&](const std::wstring& p_Ancienne, const std::wstring& p_Nouvelle) {
+        wchar_t s_Valeur[4096] = {};
+        GetPrivateProfileStringW(L"roulette", p_Ancienne.c_str(), L"\x01", s_Valeur, 4096, p_Fichier.c_str());
+        if (std::wstring(s_Valeur) == L"\x01") return; // absente
+        wchar_t s_Deja[8] = {};
+        GetPrivateProfileStringW(L"roulette", p_Nouvelle.c_str(), L"\x01", s_Deja, 8, p_Fichier.c_str());
+        if (std::wstring(s_Deja) == L"\x01") WritePrivateProfileStringW(L"roulette", p_Nouvelle.c_str(), s_Valeur, p_Fichier.c_str());
+        WritePrivateProfileStringW(L"roulette", p_Ancienne.c_str(), nullptr, p_Fichier.c_str()); // efface
+        ++n;
+    };
+    for (const auto& [s_Ancienne, s_Nouvelle] : c_Cles) Reprendre(s_Ancienne, s_Nouvelle);
+    for (int i = 0; i < 16; ++i) Reprendre(L"famille_" + std::to_wstring(i), L"method_family_" + std::to_wstring(i));
+    // Clés retirées par les versions précédentes.
+    for (const wchar_t* s_Retiree : { L"costume_depart", L"tirage_auto" }) {
+        WritePrivateProfileStringW(L"roulette", s_Retiree, nullptr, p_Fichier.c_str());
+    }
+    if (n) Diag("roulette47.ini : {} clé(s) reprise(s) sous leur nom anglais.", n);
+}
+
 void Roulette::ChargerReglages() {
     const auto s_Fichier = Large(DossierDuMod() + "\\roulette47.ini");
+    MigrerReglages(s_Fichier);
     auto Lire = [&](const wchar_t* p_Cle, int p_Defaut) {
         return static_cast<int>(GetPrivateProfileIntW(L"roulette", p_Cle, p_Defaut, s_Fichier.c_str()));
     };
@@ -314,23 +363,23 @@ void Roulette::ChargerReglages() {
     std::lock_guard s_Verrou(m_Verrou);
 
     m_Reglages.m_Mode = static_cast<EMode>(std::clamp(Lire(L"mode", 0), 0, 2));
-    m_Reglages.m_ImposerMethode = Lire(L"imposer_methode", 1) != 0;
-    m_Reglages.m_ImposerTenue = Lire(L"imposer_tenue", 1) != 0;
-    m_Reglages.m_AutoriserCostume = Lire(L"costume", 1) != 0;
+    m_Reglages.m_ImposerMethode = Lire(L"enforce_method", 1) != 0;
+    m_Reglages.m_ImposerTenue = Lire(L"enforce_outfit", 1) != 0;
+    m_Reglages.m_AutoriserCostume = Lire(L"allow_suit", 1) != 0;
     m_Reglages.m_NbComplications = std::clamp(Lire(L"complications", 3), 0, 3);
     // Plus aucun tirage tout seul (Julien, 23/11/2026 : « c'est à moi de
     // décider si je veux jouer avec la roulette »). Nouvelle clé : l'ancienne
     // « tirage_auto » valait 1 chez lui.
-    m_Reglages.m_TirageAuto = Lire(L"tirage_sans_contrat", 0) != 0;
-    m_Reglages.m_NbPnj = std::clamp(Lire(L"pnj", 1), 0, 3);
-    m_Reglages.m_EchecImpose = Lire(L"echec_impose", 1) != 0;
-    m_Reglages.m_ImposerPreparation = Lire(L"imposer_preparation", 1) != 0;
-    m_Reglages.m_CiblesDuJeuSeules = Lire(L"cibles_du_jeu", 0) != 0;
-    m_SeriePuriste = std::max(0, Lire(L"serie_puriste", 0));
+    m_Reglages.m_TirageAuto = Lire(L"draw_without_contract", 0) != 0;
+    m_Reglages.m_NbPnj = std::clamp(Lire(L"npc_targets", 1), 0, 3);
+    m_Reglages.m_EchecImpose = Lire(L"enforce_failure", 1) != 0;
+    m_Reglages.m_ImposerPreparation = Lire(L"lock_planning", 1) != 0;
+    m_Reglages.m_CiblesDuJeuSeules = Lire(L"mission_targets_only", 0) != 0;
+    m_SeriePuriste = std::max(0, Lire(L"purist_streak", 0));
     m_DiscordActif = Lire(L"discord", 1) != 0;
     {
         wchar_t s_Liste[4096] = {};
-        GetPrivateProfileStringW(L"roulette", L"destinations_exclues", L"", s_Liste, 4096, s_Fichier.c_str());
+        GetPrivateProfileStringW(L"roulette", L"excluded_destinations", L"", s_Liste, 4096, s_Fichier.c_str());
         std::string s_Texte;
         for (const wchar_t* c = s_Liste; *c; ++c) s_Texte += static_cast<char>(*c < 128 ? *c : '?');
         m_DestinationsExclues.clear();
@@ -341,25 +390,25 @@ void Roulette::ChargerReglages() {
             s_Debut = s_Fin + 1;
         }
     }
-    m_Reglages.m_CiblesMin = std::clamp(Lire(L"cibles_min", 1), 1, 3);
-    m_Reglages.m_CiblesMax = std::clamp(Lire(L"cibles_max", 3), m_Reglages.m_CiblesMin, 3);
-    m_Reglages.m_RemplacerObjectifs = Lire(L"remplacer_objectifs", 1) != 0;
-    m_Reglages.m_DestinationAuto = Lire(L"destination_auto", 1) != 0;
-    m_Reglages.m_Sons = Lire(L"sons", 1) != 0;
-    m_Reglages.m_Pilote = Lire(L"pilote", 1) != 0;
+    m_Reglages.m_CiblesMin = std::clamp(Lire(L"targets_min", 1), 1, 3);
+    m_Reglages.m_CiblesMax = std::clamp(Lire(L"targets_max", 3), m_Reglages.m_CiblesMin, 3);
+    m_Reglages.m_RemplacerObjectifs = Lire(L"replace_objectives", 1) != 0;
+    m_Reglages.m_DestinationAuto = Lire(L"auto_destination", 1) != 0;
+    m_Reglages.m_Sons = Lire(L"sounds", 1) != 0;
+    m_Reglages.m_Pilote = Lire(L"menu_autopilot", 1) != 0;
 
     for (size_t i = 0; i < FamillesMethodes().size(); ++i) {
-        m_Reglages.m_Familles[i] = Lire((L"famille_" + std::to_wstring(i)).c_str(), 1) != 0;
+        m_Reglages.m_Familles[i] = Lire((L"method_family_" + std::to_wstring(i)).c_str(), 1) != 0;
     }
 
-    m_Encart = Lire(L"encart", 1) != 0;
+    m_Encart = Lire(L"mission_overlay", 1) != 0;
 
-    // La langue : imposée par « langue= » (fr, en, it, es, ru), sinon celle de
+    // La langue : imposée par « language= » (fr, en, it, es, ru), sinon celle de
     // Steam pour le jeu, sinon celle de Windows ; le jeu la confirme ensuite
     // dès que ses textes sont chargés (DetecterLangueDuJeu).
     {
         wchar_t s_Code[16] = {};
-        GetPrivateProfileStringW(L"roulette", L"langue", L"", s_Code, 16, s_Fichier.c_str());
+        GetPrivateProfileStringW(L"roulette", L"language", L"", s_Code, 16, s_Fichier.c_str());
         std::string s_Texte;
         for (const wchar_t* c = s_Code; *c; ++c) s_Texte += static_cast<char>(*c);
         ELangue s_Langue = ELangue::Fr;
@@ -376,10 +425,10 @@ void Roulette::ChargerReglages() {
         }
         DefinirLangue(s_Langue);
     }
-    m_Touche = Lire(L"touche", VK_F9);
-    m_OutilsDeveloppement = Lire(L"outils_developpement", 0) != 0;
-    m_ReleverReponses = Lire(L"releve", 0) != 0;
-    m_JournalEvenements = Lire(L"journal_evenements", 0) != 0;
+    m_Touche = Lire(L"key", VK_F9);
+    m_OutilsDeveloppement = Lire(L"dev_tools", 0) != 0;
+    m_ReleverReponses = Lire(L"dump_responses", 0) != 0;
+    m_JournalEvenements = Lire(L"log_events", 0) != 0;
 }
 
 void Roulette::EnregistrerReglages() {
@@ -398,15 +447,15 @@ void Roulette::EnregistrerReglages() {
     }
 
     Ecrire(L"mode", static_cast<int>(s_R.m_Mode));
-    Ecrire(L"imposer_methode", s_R.m_ImposerMethode);
-    Ecrire(L"imposer_tenue", s_R.m_ImposerTenue);
-    Ecrire(L"costume", s_R.m_AutoriserCostume);
+    Ecrire(L"enforce_method", s_R.m_ImposerMethode);
+    Ecrire(L"enforce_outfit", s_R.m_ImposerTenue);
+    Ecrire(L"allow_suit", s_R.m_AutoriserCostume);
     Ecrire(L"complications", s_R.m_NbComplications);
-    Ecrire(L"tirage_sans_contrat", s_R.m_TirageAuto);
-    Ecrire(L"pnj", s_R.m_NbPnj);
-    Ecrire(L"echec_impose", s_R.m_EchecImpose);
-    Ecrire(L"imposer_preparation", s_R.m_ImposerPreparation);
-    Ecrire(L"cibles_du_jeu", s_R.m_CiblesDuJeuSeules);
+    Ecrire(L"draw_without_contract", s_R.m_TirageAuto);
+    Ecrire(L"npc_targets", s_R.m_NbPnj);
+    Ecrire(L"enforce_failure", s_R.m_EchecImpose);
+    Ecrire(L"lock_planning", s_R.m_ImposerPreparation);
+    Ecrire(L"mission_targets_only", s_R.m_CiblesDuJeuSeules);
     Ecrire(L"discord", m_DiscordActif);
     {
         std::wstring s_Liste;
@@ -414,21 +463,21 @@ void Roulette::EnregistrerReglages() {
             std::lock_guard s_Verrou(m_Verrou);
             for (const auto& s_Id : m_DestinationsExclues) s_Liste += (s_Liste.empty() ? L"" : L",") + Large(s_Id);
         }
-        WritePrivateProfileStringW(L"roulette", L"destinations_exclues", s_Liste.c_str(), s_Fichier.c_str());
+        WritePrivateProfileStringW(L"roulette", L"excluded_destinations", s_Liste.c_str(), s_Fichier.c_str());
     }
-    Ecrire(L"cibles_min", s_R.m_CiblesMin);
-    Ecrire(L"cibles_max", s_R.m_CiblesMax);
-    Ecrire(L"remplacer_objectifs", s_R.m_RemplacerObjectifs);
-    Ecrire(L"destination_auto", s_R.m_DestinationAuto);
-    Ecrire(L"sons", s_R.m_Sons);
-    Ecrire(L"pilote", s_R.m_Pilote);
+    Ecrire(L"targets_min", s_R.m_CiblesMin);
+    Ecrire(L"targets_max", s_R.m_CiblesMax);
+    Ecrire(L"replace_objectives", s_R.m_RemplacerObjectifs);
+    Ecrire(L"auto_destination", s_R.m_DestinationAuto);
+    Ecrire(L"sounds", s_R.m_Sons);
+    Ecrire(L"menu_autopilot", s_R.m_Pilote);
 
     for (size_t i = 0; i < FamillesMethodes().size(); ++i) {
-        Ecrire(L"famille_" + std::to_wstring(i), s_R.m_Familles[i]);
+        Ecrire(L"method_family_" + std::to_wstring(i), s_R.m_Familles[i]);
     }
 
-    Ecrire(L"encart", s_Encart);
-    Ecrire(L"touche", m_Touche);
+    Ecrire(L"mission_overlay", s_Encart);
+    Ecrire(L"key", m_Touche);
 }
 
 // ------------------------------------------------------------ Thread du jeu
@@ -484,7 +533,7 @@ bool Roulette::ReleverReponse(const uint8_t* p_Octets, size_t p_Taille, std::str
             }
         }
 
-        // Relevé sur le disque : outil de développement (« releve=1 »).
+        // Relevé sur le disque : outil de développement (« dump_responses=1 »).
         if (!m_ReleverReponses || s_Numero > 150) return s_Modifiee;
 
         // Jamais de jeton d'authentification ni d'identité sur le disque. On
@@ -1670,7 +1719,7 @@ void Roulette::TerminerTirage() {
     Diag("Puriste sans filet : contrat {} ; série : {}.", m_SeriePuriste > 0 ? "réussi" : "perdu", m_SeriePuriste);
     // Écrite ici, sans repasser par EnregistrerReglages (qui prend le verrou).
     const auto s_Fichier = Large(DossierDuMod() + "\\roulette47.ini");
-    WritePrivateProfileStringW(L"roulette", L"serie_puriste", std::to_wstring(m_SeriePuriste).c_str(), s_Fichier.c_str());
+    WritePrivateProfileStringW(L"roulette", L"purist_streak", std::to_wstring(m_SeriePuriste).c_str(), s_Fichier.c_str());
 }
 
 // Ce que Discord montre : où en est la roulette. Le chronomètre repart à

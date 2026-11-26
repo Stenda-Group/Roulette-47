@@ -127,4 +127,4 @@ install(FILES $<TARGET_FILE:version> DESTINATION "${GAME_INSTALL_PATH}/Retail")
 install(FILES $<TARGET_FILE:Roulette> DESTINATION "${GAME_INSTALL_PATH}/Retail/Roulette47")
 install(DIRECTORY ui/ DESTINATION "${GAME_INSTALL_PATH}/Retail/Roulette47/ui")
 # Les PNJ et tenues relevés sur chaque mission, pour un premier tirage sans visite.
-install(DIRECTORY data/lieux_initiaux/ DESTINATION "${GAME_INSTALL_PATH}/Retail/Roulette47/lieux_initiaux")
+install(DIRECTORY data/initial_locations/ DESTINATION "${GAME_INSTALL_PATH}/Retail/Roulette47/initial_locations")

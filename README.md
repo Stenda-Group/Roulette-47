@@ -180,8 +180,8 @@ Most settings live on the sheet (**Settings**). A few are only in the file:
 | `destinations_exclues` | comma-separated location ids | Destinations unticked on the sheet. |
 | `serie_puriste` | number | Current Purist streak. |
 | `outils_developpement` | `0` · `1` | Opens the WebView2 developer tools. |
-| `releve` | `0` · `1` | Development only: saves the server's menu pages and contracts in `reponses\` (never login tokens, never your profile). Off by default. |
-| `journal_evenements` | `0` · `1` | Development only: logs game events in `evenements.log`. Off by default. |
+| `releve` | `0` · `1` | Development only: saves the server's menu pages and contracts in `responses\` (never login tokens, never your profile). Off by default. |
+| `journal_evenements` | `0` · `1` | Development only: logs game events in `events.log`. Off by default. |
 
 ### What the mod keeps on your PC
 
@@ -191,12 +191,12 @@ and image downloads from IOI's image service.
 | File | Contents |
 |---|---|
 | `roulette47.ini` | Your settings and Purist streak. |
-| `destinations.json`, `lieux\`, `noms.json` | Locations, missions, NPCs and item names learned from the game. |
+| `destinations.json`, `locations\`, `initial_locations\`, `names.json` | Locations, missions, NPCs and item names learned from the game. |
 | `cache\` | Images downloaded from the game's image service. |
 | `webview\` | The overlay's browser data. |
 | `diagnostic.log` | What the mod did during the last session — no account name, Steam ID or token (only the game's install path). Rewritten at every start. |
 
-From v0.20 on, the development logs (`reponses\`, `evenements.log`) are off and the files left by earlier versions
+From v0.20 on, the development logs (`responses\`, `events.log`) are off and the files left by earlier versions
 are deleted at start-up. Up to v0.19, `reponses\` could hold a copy of your game profile (Steam ID, gamertag):
 do not share that folder from an older version.
 
@@ -232,10 +232,10 @@ screenshot of the sheet helps too.
 - **Starting location.** Choosing an entrance only writes three globals that the contract start reads back; the mod
   writes the drawn entrance there, so the game starts where the roulette decided.
 - **NPC targets everywhere.** The named NPCs and disguises of a location are recorded whenever you play it; the mod
-  also ships a recording of every story location (`lieux_initiaux`), so even a mission you have never played can
+  also ships a recording of every story location (`initial_locations`), so even a mission you have never played can
   draw NPC targets.
 - **Names in your language.** Item and location names come from the game's own localisation (two text keys per
-  item), learned whenever the game has them loaded and kept in `noms.json`.
+  item), learned whenever the game has them loaded and kept in `names.json`.
 - **Interface.** A WebView2 overlay (HTML/CSS/JS, `ui/`) above the game window; game images are downloaded from
   the game's own image service at run time and cached locally. No game asset ships with the mod.
 

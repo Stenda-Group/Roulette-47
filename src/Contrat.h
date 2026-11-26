@@ -6,7 +6,7 @@
 // objectif obligatoire »).
 //
 // Un objectif de contrat est une machine à états (voir le contrat de Sapienza
-// relevé dans Retail/Roulette/reponses/ : « Silvio s'échappe » passe en
+// relevé dans Retail/Roulette47/responses/ : « Silvio s'échappe » passe en
 // Failure au bout de 90 s). Un objectif primaire en Failure fait échouer la
 // mission, avec l'écran du jeu.
 //

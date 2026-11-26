@@ -72,7 +72,8 @@ private:
     void MessagePage(const std::string& p_Json);
 
     void ChargerReglages();
-    void ReprendreAncienDossier(); // Retail\Roulette (v0.12 et avant) → Retail\Roulette47
+    void ReprendreAncienDossier();
+    void RenommerAnciensFichiers(); // Retail\Roulette (v0.12 et avant) → Retail\Roulette47
     void DetecterLangueDuJeu(); // dès que les textes du jeu sont chargés
     void EnregistrerReglages();
 
@@ -202,7 +203,7 @@ private:
     // Les noms appris : clé de texte (en capitales) → nom dans la langue du jeu.
     // Aux menus, le jeu n'a chargé qu'une partie de ses textes (78 objets sur
     // 265 le 24/11/2026) ; la préparation et la mission ont les autres. Gardés
-    // dans noms.json pour les tirages suivants.
+    // dans names.json pour les tirages suivants.
     std::mutex m_VerrouNoms;
     std::unordered_map<std::string, std::string> m_NomsAppris;
     bool m_NomsModifies = false;

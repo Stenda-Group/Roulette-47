@@ -190,16 +190,46 @@ void Roulette::ReprendreAncienDossier() {
     };
     Copier(s_Ancien / "roulette.ini", s_Ici / "roulette47.ini");
     Copier(s_Ancien / "destinations.json", s_Ici / "destinations.json");
-    Copier(s_Ancien / "noms.json", s_Ici / "noms.json");
+    Copier(s_Ancien / "noms.json", s_Ici / "names.json");
     if (fs::is_directory(s_Ancien / "lieux", e)) {
-        for (const auto& f : fs::directory_iterator(s_Ancien / "lieux", e)) Copier(f.path(), s_Ici / "lieux" / f.path().filename());
+        for (const auto& f : fs::directory_iterator(s_Ancien / "lieux", e)) Copier(f.path(), s_Ici / "locations" / f.path().filename());
     }
     if (n) Diag("Reprise de l'ancien dossier Retail\\Roulette : {} fichier(s).", n);
+}
+
+// Noms des fichiers en anglais (v0.20, Julien : le dossier du mod est vu par
+// tous les joueurs). Ce qu'une version précédente a écrit sous l'ancien nom est
+// repris : lieux/ -> locations/, noms.json -> names.json. Les fichiers livrés
+// sous l'ancien nom (lieux_initiaux/, ui/textes.js, ui/maquette.js) et les
+// journaux de développement (reponses/, evenements.log) sont retirés.
+void Roulette::RenommerAnciensFichiers() {
+    namespace fs = std::filesystem;
+    std::error_code e;
+    const fs::path s_Ici = DossierDuMod();
+    int n = 0;
+
+    if (fs::is_directory(s_Ici / "lieux", e)) {
+        fs::create_directories(s_Ici / "locations", e);
+        for (const auto& f : fs::directory_iterator(s_Ici / "lieux", e)) {
+            const auto s_Vers = s_Ici / "locations" / f.path().filename();
+            if (!fs::exists(s_Vers, e)) { fs::rename(f.path(), s_Vers, e); if (!e) ++n; }
+        }
+        fs::remove_all(s_Ici / "lieux", e);
+    }
+    if (fs::exists(s_Ici / "noms.json", e)) {
+        if (!fs::exists(s_Ici / "names.json", e)) { fs::rename(s_Ici / "noms.json", s_Ici / "names.json", e); if (!e) ++n; }
+        fs::remove(s_Ici / "noms.json", e);
+    }
+    for (const char* s_Ancien : { "lieux_initiaux", "reponses", "ui/textes.js", "ui/maquette.js", "evenements.log" }) {
+        if (fs::exists(s_Ici / s_Ancien, e)) { fs::remove_all(s_Ici / s_Ancien, e); ++n; }
+    }
+    if (n) Diag("Anciens noms de fichiers repris ou retirés : {}.", n);
 }
 
 void Roulette::Demarrer() {
     Diag("Roulette 47 v0.20 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
+    RenommerAnciensFichiers();
 
     if (!Moteur::Resoudre()) {
         Diag("Le mod reste inactif : une partie du jeu n'a pas été reconnue.");
@@ -231,7 +261,7 @@ void Roulette::Demarrer() {
     // Journal des événements, pour caler les valeurs du jeu (« journal_evenements=1 »
     // du .ini : coupé chez les joueurs, et celui d'une version précédente effacé).
     // Repart à zéro au-delà de 2 Mo.
-    const auto s_Chemin = std::filesystem::path(DossierDuMod()) / "evenements.log";
+    const auto s_Chemin = std::filesystem::path(DossierDuMod()) / "events.log";
     std::error_code s_Erreur;
     if (m_JournalEvenements) {
         const bool s_Trop = std::filesystem::exists(s_Chemin) && std::filesystem::file_size(s_Chemin, s_Erreur) > 2'000'000;
@@ -261,7 +291,7 @@ void Roulette::Demarrer() {
     // viennent la destination tirée au sort et l'échec « vanilla ». Leur relevé
     // sur le disque n'a lieu qu'avec « releve=1 » ; le dossier est vidé à chaque
     // lancement dans tous les cas (relevés d'une version précédente compris).
-    std::filesystem::remove_all(std::filesystem::path(DossierDuMod()) / "reponses", s_Erreur);
+    std::filesystem::remove_all(std::filesystem::path(DossierDuMod()) / "responses", s_Erreur);
     Moteur::CapterReponses(&Roulette::SurReponse);
 
     // Ouverture directe de la préparation à l'acceptation (détour posé ici, une fois).
@@ -415,7 +445,7 @@ bool Roulette::SurReponse(const uint8_t* p_Octets, size_t p_Taille, std::string&
     return Instance().ReleverReponse(p_Octets, p_Taille, p_Nouveau);
 }
 
-// Écrit chaque réponse JSON du serveur dans Retail/Roulette/reponses/ (150 au
+// Écrit chaque réponse JSON du serveur dans Retail/Roulette47/responses/ (150 au
 // plus par session). Une réponse qui contient un jeton d'authentification n'est
 // JAMAIS écrite : le relevé ne doit pas laisser d'identifiants sur le disque.
 bool Roulette::ReleverReponse(const uint8_t* p_Octets, size_t p_Taille, std::string& p_Nouveau) {
@@ -487,7 +517,7 @@ bool Roulette::ReleverReponse(const uint8_t* p_Octets, size_t p_Taille, std::str
         }
         for (auto& c : s_Indice) if (!isalnum(static_cast<unsigned char>(c)) && c != '_') c = '-';
 
-        const auto s_Dossier = std::filesystem::path(DossierDuMod()) / "reponses";
+        const auto s_Dossier = std::filesystem::path(DossierDuMod()) / "responses";
         std::error_code s_Erreur;
         std::filesystem::create_directories(s_Dossier, s_Erreur);
 
@@ -504,13 +534,13 @@ bool Roulette::ReleverReponse(const uint8_t* p_Octets, size_t p_Taille, std::str
 
 // Le contrat arrive du serveur AVANT le chargement du niveau : c'est ici que se
 // fait le tirage, puis ses règles sont écrites comme objectifs du contrat (voir
-// Contrat.h). PNJ et tenues du lieu viennent de Retail/Roulette/lieux/, gardés
+// Contrat.h). PNJ et tenues du lieu viennent de Retail/Roulette47/locations/, gardés
 // lors d'une visite précédente ; à la première visite d'un lieu, seules les
 // cibles du contrat sont tirées, sans tenue du niveau.
 // Le contrat arrive du serveur AVANT le chargement du niveau : la roulette y est
 // écrite comme objectifs du contrat (voir Contrat.h). Le tirage est celui fait
 // sur l'écran de préparation (TirerAvantMission) quand la mission y est passée ;
-// sinon il se fait ici. PNJ et tenues du lieu viennent de Retail/Roulette/lieux/,
+// sinon il se fait ici. PNJ et tenues du lieu viennent de Retail/Roulette47/locations/,
 // gardés lors d'une visite précédente ; à la première visite d'un lieu, seules
 // les cibles du contrat sont tirées, sans tenue du niveau.
 bool Roulette::InjecterContrat(nlohmann::json& p_Reponse) {
@@ -636,20 +666,20 @@ bool Roulette::InjecterContrat(nlohmann::json& p_Reponse) {
     return true;
 }
 
-// Retail/Roulette/lieux/<LIEU>.json : tenues du niveau (plus le costume de 47)
+// Retail/Roulette47/locations/<LIEU>.json : tenues du niveau (plus le costume de 47)
 // et PNJ tirés au sort parmi ceux qu'on y a vus. Rend faux si le lieu n'a jamais
 // été visité. Sous verrou.
 bool Roulette::ChargerMemoireLieu(const std::string& p_Lieu, STirage& p_Tirage, const std::set<std::string>& p_Officielles) {
     using nlohmann::json;
 
-    // Le relevé du joueur d'abord (lieux/), sinon celui livré avec le mod
-    // (lieux_initiaux/, les missions relevées le 24/11/2026) : un tout premier
+    // Le relevé du joueur d'abord (locations/), sinon celui livré avec le mod
+    // (initial_locations/, les missions relevées le 24/11/2026) : un tout premier
     // tirage sur une mission jamais jouée propose déjà des PNJ.
     json s_Memoire;
     {
         std::string s_Fichier = p_Lieu;
         for (auto& c : s_Fichier) if (!isalnum(static_cast<unsigned char>(c)) && c != '_') c = '_';
-        for (const char* s_Dossier : { "lieux", "lieux_initiaux" }) {
+        for (const char* s_Dossier : { "locations", "initial_locations" }) {
             std::ifstream s_Flux(std::filesystem::path(DossierDuMod()) / s_Dossier / (s_Fichier + ".json"), std::ios::binary);
             if (!s_Flux) continue;
             s_Memoire = json::parse(s_Flux, nullptr, false);
@@ -1583,7 +1613,7 @@ std::string Roulette::TraduireNom(const std::string& p_Cle, const std::string& p
 // ou en anglais (« (Pistol) ICA 19 Short Baller »). Aux menus, le jeu n'a
 // chargé qu'une partie de ses textes ; la page de préparation et la mission
 // ont les autres. On traduit donc à chaque occasion — tirage, préparation,
-// départ en mission —, on retient ce qui l'a été (noms.json) et on renomme
+// départ en mission —, on retient ce qui l'a été (names.json) et on renomme
 // ce qui est déjà tiré.
 void Roulette::ApprendreNoms() {
     int s_Traduits = 0, s_Restants = 0;
@@ -1697,7 +1727,7 @@ void Roulette::RetenirEntreeReperee(const std::string& p_IdEntree) {
 }
 
 void Roulette::ChargerNoms() {
-    std::ifstream s_Flux(std::filesystem::path(DossierDuMod()) / "noms.json", std::ios::binary);
+    std::ifstream s_Flux(std::filesystem::path(DossierDuMod()) / "names.json", std::ios::binary);
     if (!s_Flux) return;
 
     const auto s_Json = nlohmann::json::parse(s_Flux, nullptr, false);
@@ -1718,7 +1748,7 @@ void Roulette::EnregistrerNoms() {
         m_NomsModifies = false;
     }
 
-    std::ofstream s_Flux(std::filesystem::path(DossierDuMod()) / "noms.json", std::ios::binary | std::ios::trunc);
+    std::ofstream s_Flux(std::filesystem::path(DossierDuMod()) / "names.json", std::ios::binary | std::ios::trunc);
     s_Flux << s_Json.dump(1);
 }
 
@@ -2282,7 +2312,7 @@ void Roulette::Marquer(bool p_Marquer) {
     }
 }
 
-// Retail/Roulette/lieux/<LOCATION>.json : les PNJ vus dans ce lieu, pour tirer
+// Retail/Roulette47/locations/<LOCATION>.json : les PNJ vus dans ce lieu, pour tirer
 // des cibles AVANT d'y entrer la fois suivante.
 void Roulette::RetenirPnjDuLieu() {
     if (m_IdLieu.empty() || m_Pnj.empty()) return;
@@ -2297,7 +2327,7 @@ void Roulette::RetenirPnjDuLieu() {
         if (!t.m_EstCostume) s_Liste["tenues"].push_back({ { "id", t.m_Id }, { "nom", t.m_Nom }, { "image", t.m_Image } });
     }
 
-    const auto s_Dossier = std::filesystem::path(DossierDuMod()) / "lieux";
+    const auto s_Dossier = std::filesystem::path(DossierDuMod()) / "locations";
     std::error_code s_Erreur;
     std::filesystem::create_directories(s_Dossier, s_Erreur);
 

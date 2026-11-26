@@ -1,7 +1,7 @@
 #pragma once
 
 // Les pages des menus que le serveur envoie au jeu (relevées le 22/11/2026,
-// Retail/Roulette/reponses/) : on y lit ce que le joueur possède, et on y écrit
+// Retail/Roulette47/responses/) : on y lit ce que le joueur possède, et on y écrit
 // la préparation tirée au sort.
 //
 //   - l'écran des destinations (« data.DestinationsData ») : les lieux, leur

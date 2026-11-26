@@ -68,8 +68,8 @@ def build_archive(version):
         "Retail/Roulette47/LICENSE.txt": ROOT / "LICENSE",
         "Retail/Roulette47/THIRD-PARTY-NOTICES.md": ROOT / "THIRD-PARTY-NOTICES.md",
     }
-    for f in sorted((ROOT / "data" / "lieux_initiaux").glob("*.json")):
-        files["Retail/Roulette47/lieux_initiaux/" + f.name] = f
+    for f in sorted((ROOT / "data" / "initial_locations").glob("*.json")):
+        files["Retail/Roulette47/initial_locations/" + f.name] = f
     for f in sorted((ROOT / "ui").rglob("*")):
         if f.is_file():
             files["Retail/Roulette47/ui/" + f.relative_to(ROOT / "ui").as_posix()] = f

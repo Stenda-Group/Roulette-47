@@ -10,7 +10,7 @@
 
 // Valeurs KillMethodBroad / KillMethodStrict : celles relevées dans les défis
 // officiels du jeu (accident_drown, accident_push, consumed_poison…). « melee »
-// et « throw » restent à confirmer : evenements.log le dira à la première
+// et « throw » restent à confirmer : events.log le dira à la première
 // élimination de ce genre.
 const std::vector<SMethode>& Methodes() {
     static const std::vector<SMethode> s_Methodes = {

@@ -227,7 +227,7 @@ void Roulette::RenommerAnciensFichiers() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.20 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v0.21 (autonome) dans {}.", DossierDuMod());
     ReprendreAncienDossier();
     RenommerAnciensFichiers();
 
@@ -523,6 +523,14 @@ bool Roulette::ReleverReponse(const uint8_t* p_Octets, size_t p_Taille, std::str
             auto s_Json = nlohmann::json::parse(s_Texte, nullptr, false);
 
             if (!s_Json.is_discarded() && s_Json.is_object()) {
+                // Une page des menus ou un contrat : le jeu est en ligne. Une
+                // réponse quelconque ne suffit pas (au démarrage, ou pendant une
+                // maintenance, le serveur répond sans servir de page).
+                if (m_ReponsesServeur.fetch_add(1) == 0) {
+                    Diag("Serveurs d'IOI : première page reçue, jeu en ligne.");
+                    m_Fenetre.Pousser();
+                }
+
                 const bool s_Change = s_EstContrat && s_Json.contains("Contract") ? InjecterContrat(s_Json) : TraiterMenus(s_Json);
 
                 if (s_Change) {
@@ -841,6 +849,16 @@ bool Roulette::TraiterMenus(nlohmann::json& p_Reponse) {
 
         if (LireDestinations(p_Reponse, s_Liste, s_Traduire)) {
             LireHistoire(p_Reponse, s_Liste, s_Traduire);
+
+            // Titres des missions dans la langue du jeu du moment :
+            // destinations.json garde ceux de la langue où ils ont été lus, et
+            // la page d'un lieu (qui les relit) peut ne jamais revenir (Julien a
+            // passé son jeu en anglais le 26/11/2026 : titres restés en français).
+            for (auto& d : s_Liste) {
+                for (auto& m : d.m_Missions) {
+                    if (auto s_Titre = Moteur::Traduire(m.m_CleTitre); !s_Titre.empty()) m.m_Titre = std::move(s_Titre);
+                }
+            }
 
             std::lock_guard s_Verrou(m_Verrou);
             m_Destinations = std::move(s_Liste);
@@ -2012,10 +2030,13 @@ void Roulette::ChaqueImage() {
         if (m_EnMission && m_DemandeReleve && !m_DemandeTirage) {
             const auto s_Avant = m_Tirage;
             const auto s_CiblesContrat = m_CiblesContrat;
-            if (PreparerNiveau()) {
+            const bool s_Fait = PreparerNiveau();
+            // Rendu même après une lecture ratée : PreparerNiveau vide le tirage,
+            // et un niveau pas encore prêt est relu toutes les 5 s.
+            m_Tirage = s_Avant;
+            m_CiblesContrat = s_CiblesContrat;
+            if (s_Fait) {
                 m_DemandeReleve = false;
-                m_Tirage = s_Avant;
-                m_CiblesContrat = s_CiblesContrat;
                 Diag("Relevé du lieu {} : {} PNJ retenus pour les prochains tirages.", m_IdLieu, m_Pnj.size());
             }
         }
@@ -2027,9 +2048,10 @@ void Roulette::ChaqueImage() {
                 // Le contrat porte déjà la roulette : relire le niveau pour la
                 // mémoire du lieu, puis remettre le tirage tel qu'il a été écrit.
                 const auto s_Injecte = m_Tirage;
-                if (PreparerNiveau()) {
+                const bool s_Fait = PreparerNiveau();
+                m_Tirage = s_Injecte; // même après une lecture ratée (voir plus haut)
+                if (s_Fait) {
                     m_DemandeReleve = false;
-                    m_Tirage = s_Injecte;
                     for (auto& t : m_Tirage.m_Tenues) if (t.m_EstCostume) t.m_Image = m_ImageCostume;
                     if (m_Images) for (const auto& t : m_Tirage.m_Tenues) m_Images->Demander(t.m_Image);
                     m_DemandeTirage = false;
@@ -2363,8 +2385,14 @@ void Roulette::Marquer(bool p_Marquer) {
 
 // Retail/Roulette47/locations/<LOCATION>.json : les PNJ vus dans ce lieu, pour tirer
 // des cibles AVANT d'y entrer la fois suivante.
+// Écrit aussi un lieu sans PNJ nommé, pourvu qu'il ait des tenues : à Nightcall
+// (Hawke's Bay), les 35 personnages de la liste du niveau sont l'équipe de la
+// mission de Jacksepticeye, désactivée ; seuls la cible et ses gardes sans nom
+// sont là. Le fichier garde alors les tenues, que le tirage d'avant-mission
+// peut proposer (26/11/2026).
 void Roulette::RetenirPnjDuLieu() {
-    if (m_IdLieu.empty() || m_Pnj.empty()) return;
+    const bool s_Tenues = std::ranges::any_of(m_Tirage.m_Tenues, [](const STenue& t) { return !t.m_EstCostume; });
+    if (m_IdLieu.empty() || (m_Pnj.empty() && !s_Tenues)) return;
 
     nlohmann::json s_Liste = { { "pnj", nlohmann::json::array() }, { "tenues", nlohmann::json::array() } };
 
@@ -2565,6 +2593,7 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
     s_Etat["images"] = m_ImagesArrivees.load();
     s_Etat["tirage"] = m_NumeroTirage;
     s_Etat["mission"] = { { "lieu", m_Lieu }, { "titre", m_TitreMission } };
+    s_Etat["enLigne"] = m_ReponsesServeur.load() > 0;
 
     if (!m_EnMission && m_Propose) s_Etat["etat"] = "propose";
     else if (!m_EnMission && m_Prepare) s_Etat["etat"] = "accepte";
@@ -2787,7 +2816,10 @@ void Roulette::MessagePage(const std::string& p_Json) {
     }
     else if (s_Action == "tirer") {
         std::lock_guard s_Verrou(m_Verrou);
-        if (!m_EnMission && TirerContrat()) {
+        if (m_ReponsesServeur.load() == 0) {
+            Diag("Tirage refusé : aucune réponse des serveurs d'IOI (jeu hors ligne).");
+        }
+        else if (!m_EnMission && TirerContrat()) {
             const auto& p = m_TiragePrepare.m_Preparation;
             Diag("Contrat proposé : {} — {} ; {} cible(s), entrée « {} ».", m_Lieu, m_TitreMission, m_TiragePrepare.m_Cibles.size(), p.m_Entree.m_Nom);
         }
@@ -2852,7 +2884,8 @@ void Roulette::MessagePage(const std::string& p_Json) {
     }
     else if (s_Action == "importer") {
         std::lock_guard s_Verrou(m_Verrou);
-        if (!m_EnMission) ImporterContrat(ChampTexte(s_Message, "code"));
+        if (m_ReponsesServeur.load() == 0) m_ErreurCode = Tx("code.hors_ligne");
+        else if (!m_EnMission) ImporterContrat(ChampTexte(s_Message, "code"));
         else m_ErreurCode = Tx("code.en_mission");
         m_Fenetre.Pousser();
     }

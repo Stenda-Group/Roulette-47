@@ -129,6 +129,11 @@ namespace {
             { "code.en_mission", { "Charge un code depuis les menus, pas en mission.", "Load a code from the menus, not during a mission.",
                                    "Carica un codice dai menu, non in missione.", "Carga un código desde los menús, no en misión.",
                                    "Загружай код из меню, а не во время миссии." } },
+            { "code.hors_ligne", { "Le jeu est hors ligne : connecte-toi aux serveurs d’IOI pour charger un code.",
+                                   "The game is offline: connect to IOI’s servers to load a code.",
+                                   "Il gioco è offline: connettiti ai server di IOI per caricare un codice.",
+                                   "El juego está sin conexión: conéctate a los servidores de IOI para cargar un código.",
+                                   "Игра не в сети: подключись к серверам IOI, чтобы загрузить код." } },
             // ---------------------------------------------------- Discord
             { "discord.menus", { "Dans les menus", "In the menus", "Nei menu", "En los menús", "В меню" } },
             { "discord.propose", { "Contrat proposé · %s", "Contract drawn · %s", "Contratto estratto · %s", "Contrato sorteado · %s", "Контракт выпал · %s" } },

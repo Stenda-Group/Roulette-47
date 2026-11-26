@@ -191,6 +191,11 @@ private:
     // (SteamId, gamertag, adresse) sur le disque de chacun.
     bool m_ReleverReponses = false;
     bool m_JournalEvenements = false;
+    // Pages des menus (ou contrats) reçues des serveurs d'IOI depuis le
+    // lancement. Hors ligne, le jeu n'en reçoit aucune : la roulette ne peut
+    // alors rien faire (pages, contrat et images viennent du serveur), la
+    // fiche le dit (v0.21).
+    std::atomic<int> m_ReponsesServeur { 0 };
 
     std::atomic<int> m_ImagesArrivees = 0;
     double m_DernierService = -100.0;

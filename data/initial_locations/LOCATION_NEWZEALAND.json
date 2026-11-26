@@ -1,0 +1,15 @@
+{
+ "pnj": [],
+ "tenues": [
+  {
+   "id": "d4dd18b3-2dbe-4ad2-8bfa-db5fdb9a6568",
+   "image": "images/unlockables/outfit_d4dd18b3-2dbe-4ad2-8bfa-db5fdb9a6568_0.jpg",
+   "nom": "Bodyguard"
+  },
+  {
+   "id": "7ed91a58-c450-4b93-a88b-174c1813264c",
+   "image": "images/unlockables/outfit_7ed91a58-c450-4b93-a88b-174c1813264c_0.jpg",
+   "nom": "Bodyguard Leader"
+  }
+ ]
+}

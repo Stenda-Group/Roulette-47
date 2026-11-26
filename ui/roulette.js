@@ -263,7 +263,16 @@ const roulette = (() => {
     const texte = $('accueil-texte');
     const b = $('btn-tirer');
 
-    if (enMission) {
+    // Hors ligne (aucune réponse des serveurs d'IOI depuis le lancement) :
+    // ni tirage ni code, la roulette n'aurait ni contrat ni images.
+    const horsLigne = etat.enLigne === false;
+    $('hors-ligne').hidden = !horsLigne;
+    $('form-code').hidden = horsLigne;
+    if (horsLigne) {
+      texte.textContent = t('accueil_hors_ligne');
+      b.hidden = true;
+      $('modes').hidden = true;
+    } else if (enMission) {
       texte.textContent = t('accueil_en_mission');
       b.hidden = true;
       $('modes').hidden = true;
@@ -352,7 +361,7 @@ const roulette = (() => {
   function remplirBandeau(d, mission) {
     const m = $('bandeau-mode');
     m.hidden = !etat.modeContrat;
-    m.textContent = etat.modeContrat ? t('mode_prefixe') + ' ' + nomMode(etat.modeContrat) : '';
+    m.textContent = etat.modeContrat ? t('mode_badge').replace('%s', nomMode(etat.modeContrat)) : '';
     const fond = $('bandeau-fond');
     $('bandeau-lieu').textContent = d ? d.nom : (mission.lieu || '');
     $('bandeau-mission').textContent = d && d.mission ? d.mission.titre : (mission.titre || '');

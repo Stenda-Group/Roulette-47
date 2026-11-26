@@ -103,6 +103,7 @@
     langue: new URLSearchParams(location.search).get('langue') || 'fr',
     etat: 'hors_mission',
     enMission: false,
+    enLigne: true,
     tirable: true,
     mission: { lieu: '', titre: '' },
     relancePossible: false,
@@ -182,6 +183,9 @@
         lancement: null });
       etat.preparation.arme.etat = 'reussi';
       etat.preparation.objet.etat = 'reussi';
+    }],
+    ['Hors ligne', () => {
+      Object.assign(etat, { enLigne: !etat.enLigne, etat: 'hors_mission', enMission: false, cibles: [] });
     }],
     ['Cible éliminée', () => { if (etat.cibles[0]) etat.cibles[0].etat = 'reussi'; }],
     ['Complication rompue', () => { if (etat.complications[0]) etat.complications[0].etat = 'echoue'; }],

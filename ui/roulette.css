@@ -504,6 +504,16 @@ kbd {
 .code__message { margin-top: 10px; font-size: 13px; color: #c9c9cf; max-width: 560px; }
 .code__message--erreur { color: #ff5a64; }
 
+/* Hors ligne : la roulette ne peut rien tirer sans les serveurs d'IOI. */
+.hors-ligne {
+  display: inline-flex; align-items: center; gap: 10px; align-self: flex-start;
+  padding: 6px 12px; margin-bottom: 4px;
+  border: 1px solid var(--rouge); background: rgba(230, 0, 18, .12);
+  font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+}
+.hors-ligne[hidden] { display: none; }
+.hors-ligne__point { width: 8px; height: 8px; border-radius: 50%; background: var(--rouge); }
+
 /* ------------------------------------------------------------ Chargement (contrat accepté) */
 
 .chargement {

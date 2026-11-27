@@ -17,6 +17,13 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded") # rien à installer à côté
 set(GAME_INSTALL_PATH "C:/Program Files (x86)/Steam/steamapps/common/HITMAN 3" CACHE PATH "Dossier du jeu")
 
 add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+
+# La version (VERSION) compilée dans le mod : la mise à jour la compare à la
+# dernière release.
+file(STRINGS "${CMAKE_SOURCE_DIR}/VERSION" ROULETTE_VERSION LIMIT_COUNT 1)
+string(STRIP "${ROULETTE_VERSION}" ROULETTE_VERSION)
+add_compile_definitions(ROULETTE_VERSION="${ROULETTE_VERSION}")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/VERSION")
 add_compile_options(/utf-8 /permissive-)
 
 include(FetchContent)
@@ -67,6 +74,8 @@ set(SOURCES_MOD
     src/Http.cpp
     src/Contrat.cpp
     src/Menus.cpp
+    src/Droits.cpp
+    src/MiseAJour.cpp
 )
 add_library(Roulette SHARED ${SOURCES_MOD} ${SOURCES_MINHOOK} "${miniz_SOURCE_DIR}/miniz.c")
 set_target_properties(Roulette PROPERTIES OUTPUT_NAME Roulette47)
@@ -81,7 +90,7 @@ target_include_directories(Roulette PRIVATE
     "${miniz_SOURCE_DIR}"
 )
 target_link_libraries(Roulette PRIVATE
-    nlohmann_json::nlohmann_json winhttp dcomp urlmon
+    nlohmann_json::nlohmann_json winhttp dcomp urlmon bcrypt
     "${WEBVIEW2}/x64/WebView2LoaderStatic.lib"
 )
 
@@ -100,6 +109,21 @@ target_compile_options(EssaiContrat PRIVATE /EHa)
 target_include_directories(EssaiContrat PRIVATE src
     "${minhook_SOURCE_DIR}/src/hde" "${miniz_SOURCE_DIR}")
 target_link_libraries(EssaiContrat PRIVATE nlohmann_json::nlohmann_json)
+
+# ---------------------------------------------------------------- Essai de la mise à jour
+# Versions, somme des notes, chemins ; avec --reseau, une vraie installation
+# dans une copie de dossier (tools/essai_maj.cpp).
+add_executable(EssaiMaj tools/essai_maj.cpp src/MiseAJour.cpp src/Diagnostic.cpp src/Langue.cpp "${miniz_SOURCE_DIR}/miniz.c")
+target_compile_options(EssaiMaj PRIVATE /EHsc)
+target_include_directories(EssaiMaj PRIVATE src "${miniz_SOURCE_DIR}")
+target_link_libraries(EssaiMaj PRIVATE nlohmann_json::nlohmann_json winhttp bcrypt)
+
+# ---------------------------------------------------------------- Essai des DLC
+# Une mission d'un DLC que le joueur n'a pas n'est jamais tirée (tools/essai_droits.cpp).
+add_executable(EssaiDroits tools/essai_droits.cpp src/Droits.cpp src/Diagnostic.cpp)
+target_compile_options(EssaiDroits PRIVATE /EHsc)
+target_include_directories(EssaiDroits PRIVATE src)
+target_link_libraries(EssaiDroits PRIVATE nlohmann_json::nlohmann_json)
 
 # ---------------------------------------------------------------- Essai des méthodes
 # La fiche et l'objectif du contrat rendent le même verdict pour chaque méthode

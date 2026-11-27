@@ -13,6 +13,8 @@
 #include <Windows.h>
 
 #include "Diagnostic.h"
+#include "Droits.h"
+#include "MiseAJour.h"
 #include "Glacier.h"
 #include "Langue.h"
 #include "CodeContrat.h"
@@ -22,6 +24,11 @@
 #include "Moteur.h"
 
 namespace {
+    // Une mission que le joueur peut lancer : pas d'un DLC qu'il n'a pas (Droits.h).
+    bool MissionDuJoueur(const SMissionConnue& p_Mission) {
+        return MissionPossedee(p_Mission.m_Brut, DroitPossede);
+    }
+
     // L'application Discord de Roulette 47 (portail des développeurs de
     // Discord) ; « discord_app » de roulette47.ini la remplace. Vide : pas de
     // présence tant qu'aucune n'est réglée.
@@ -227,9 +234,10 @@ void Roulette::RenommerAnciensFichiers() {
 }
 
 void Roulette::Demarrer() {
-    Diag("Roulette 47 v0.23 (autonome) dans {}.", DossierDuMod());
+    Diag("Roulette 47 v{} (autonome) dans {}.", MiseAJour::Version(), DossierDuMod());
     ReprendreAncienDossier();
     RenommerAnciensFichiers();
+    MiseAJour::AppliquerEnAttente();
 
     if (!Moteur::Resoudre()) {
         Diag("Le mod reste inactif : une partie du jeu n'a pas été reconnue.");
@@ -248,6 +256,7 @@ void Roulette::Demarrer() {
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     ChargerReglages();
+    if (m_VerifierMiseAJour) MiseAJour::Verifier([this] { m_Fenetre.Pousser(); });
     ChargerDestinations();
     ChargerNoms();
     ChargerEntreesReperees();
@@ -377,6 +386,7 @@ void Roulette::ChargerReglages() {
     m_Reglages.m_CiblesDuJeuSeules = Lire(L"mission_targets_only", 0) != 0;
     m_SeriePuriste = std::max(0, Lire(L"purist_streak", 0));
     m_DiscordActif = Lire(L"discord", 1) != 0;
+    m_VerifierMiseAJour = Lire(L"check_updates", 1) != 0;
     {
         wchar_t s_Liste[4096] = {};
         GetPrivateProfileStringW(L"roulette", L"excluded_destinations", L"", s_Liste, 4096, s_Fichier.c_str());
@@ -1402,6 +1412,11 @@ bool Roulette::ImporterContrat(const std::string& p_Code) {
         Diag("Code de contrat : mission {} absente des destinations de ce joueur.", s_IdContrat);
         return false;
     }
+    if (!MissionDuJoueur(m_Destinations[l].m_Missions[m])) {
+        m_ErreurCode = Tx("code.dlc");
+        Diag("Code de contrat : la mission {} demande un DLC que ce joueur n'a pas.", s_IdContrat);
+        return false;
+    }
 
     m_Depot.Charger();
     ApprendreNoms();
@@ -1627,7 +1642,7 @@ void Roulette::OublierContrat() {
 
 bool Roulette::TirerDestinationMaintenant() {
     int l = -1, m = -1;
-    if (!TirerDestination(m_Destinations, m_Hasard, l, m, m_DestinationsExclues)) return false;
+    if (!TirerDestination(m_Destinations, m_Hasard, l, m, m_DestinationsExclues, MissionDuJoueur)) return false;
 
     m_DestLieu = l;
     m_DestMission = m;
@@ -2606,6 +2621,7 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
     s_Etat["tirage"] = m_NumeroTirage;
     s_Etat["mission"] = { { "lieu", m_Lieu }, { "titre", m_TitreMission } };
     s_Etat["enLigne"] = m_ReponsesServeur.load() > 0;
+    s_Etat["miseAJour"] = MiseAJour::Etat();
 
     if (!m_EnMission && m_Propose) s_Etat["etat"] = "propose";
     else if (!m_EnMission && m_Prepare) s_Etat["etat"] = "accepte";
@@ -2737,7 +2753,7 @@ std::string Roulette::EtatJson(bool p_Ouverte) {
     {
         int l = -1, m = -1;
         std::mt19937 s_Essai(1);
-        s_Etat["tirable"] = TirerDestination(m_Destinations, s_Essai, l, m, m_DestinationsExclues);
+        s_Etat["tirable"] = TirerDestination(m_Destinations, s_Essai, l, m, m_DestinationsExclues, MissionDuJoueur);
     }
     s_Etat["numeroDestination"] = m_NumeroDestination;
     s_Etat["destinations"] = s_Possedees;
@@ -2894,6 +2910,13 @@ void Roulette::MessagePage(const std::string& p_Json) {
             }
         }
         m_Fenetre.Pousser();
+    }
+    else if (s_Action == "maj_installer") {
+        MiseAJour::Installer();
+        m_Fenetre.Pousser();
+    }
+    else if (s_Action == "maj_page") {
+        MiseAJour::OuvrirPage();
     }
     else if (s_Action == "importer") {
         std::lock_guard s_Verrou(m_Verrou);

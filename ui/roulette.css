@@ -515,6 +515,24 @@ kbd {
 .hors-ligne[hidden] { display: none; }
 .hors-ligne__point { width: 8px; height: 8px; border-radius: 50%; background: var(--rouge); }
 
+/* Mise à jour : annoncée en tête de l'accueil. */
+.maj {
+  position: absolute; top: 18px; right: 22px; z-index: 2;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 8px 8px 8px 14px; max-width: 540px;
+  border: 1px solid rgba(63, 207, 106, .55); background: rgba(12, 28, 18, .92);
+  animation: monte .6s backwards var(--courbe);
+}
+.maj[hidden] { display: none; }
+.maj__icone { width: 20px; height: 20px; color: var(--vert); flex: none; }
+.maj__texte { font-size: 14px; font-weight: 700; flex: 1; min-width: 200px; }
+.maj--telechargement .maj__icone { animation: battement 1s infinite; }
+@keyframes battement { 50% { opacity: .35; } }
+.maj--erreur { border-color: var(--rouge); background: rgba(40, 8, 12, .92); }
+.maj--erreur .maj__icone { color: var(--rouge); }
+.maj .bouton[hidden] { display: none; }
+.bouton--petit { height: 34px; padding: 0 14px; font-size: 12px; }
+
 /* ------------------------------------------------------------ Chargement (contrat accepté) */
 
 .chargement {

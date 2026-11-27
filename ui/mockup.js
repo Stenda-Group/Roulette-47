@@ -104,6 +104,7 @@
     etat: 'hors_mission',
     enMission: false,
     enLigne: true,
+    miseAJour: { etat: 'aucune', version: '', actuelle: '0.23', erreur: '' },
     tirable: true,
     mission: { lieu: '', titre: '' },
     relancePossible: false,
@@ -159,6 +160,7 @@
       setTimeout(() => { etat.lancement = 'prete'; pousser(); }, 3000);
     }
     if (m.action === 'refuser') oublier();
+    if (m.action === 'maj_installer') { etat.miseAJour.etat = 'telechargement'; setTimeout(() => { etat.miseAJour.etat = 'installee'; pousser(); }, 1500); }
     if (m.action === 'fermer') etat.ouverte = false;
     if (m.action === 'reglage') {
       if (m.cle === 'famille') etat.reglages.familles[m.index] = m.valeur;
@@ -184,6 +186,13 @@
         lancement: null });
       etat.preparation.arme.etat = 'reussi';
       etat.preparation.objet.etat = 'reussi';
+    }],
+    // La dernière release publiée (v0.23) présentée comme nouvelle.
+    ['Mise à jour', () => {
+      const m = etat.miseAJour;
+      const suite = { aucune: 'disponible', disponible: 'telechargement', telechargement: 'installee', installee: 'erreur', erreur: 'aucune' };
+      Object.assign(m, { etat: suite[m.etat], version: '0.23', erreur: m.etat === 'installee' ? 'téléchargement impossible, réessaie plus tard ou passe par la page de la version' : '' });
+      Object.assign(etat, { etat: 'hors_mission', enMission: false, cibles: [] });
     }],
     ['Hors ligne', () => {
       Object.assign(etat, { enLigne: !etat.enLigne, etat: 'hors_mission', enMission: false, cibles: [] });

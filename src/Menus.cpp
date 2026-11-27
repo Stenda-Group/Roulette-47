@@ -555,11 +555,12 @@ std::vector<SDestination> DestinationsDepuisJson(const json& p_Json) {
 // ---------------------------------------------------------------- Tirages
 
 bool TirerDestination(const std::vector<SDestination>& p_Destinations, std::mt19937& p_Hasard, int& p_Lieu, int& p_Mission,
-                      const std::set<std::string>& p_Exclues) {
-    const auto Jouables = [](const SDestination& d) {
+                      const std::set<std::string>& p_Exclues, const std::function<bool(const SMissionConnue&)>& p_Jouable) {
+    const auto Jouables = [&p_Jouable](const SDestination& d) {
         std::vector<int> s_Index;
         for (size_t j = 0; j < d.m_Missions.size(); ++j) {
-            if (!d.m_Missions[j].m_Cibles.empty() && d.m_Missions[j].m_Brut.is_object()) s_Index.push_back(static_cast<int>(j));
+            const auto& m = d.m_Missions[j];
+            if (!m.m_Cibles.empty() && m.m_Brut.is_object() && (!p_Jouable || p_Jouable(m))) s_Index.push_back(static_cast<int>(j));
         }
         return s_Index;
     };

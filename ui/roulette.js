@@ -258,6 +258,23 @@ const roulette = (() => {
     });
   }
 
+  // Une nouvelle version publiée sur GitHub (MiseAJour.cpp) : annoncée, puis
+  // installée d'un clic ; elle sert au prochain lancement du jeu.
+  function rendreMiseAJour() {
+    const m = etat.miseAJour || {};
+    const bloc = $('maj');
+    bloc.hidden = !['disponible', 'telechargement', 'installee', 'erreur'].includes(m.etat);
+    if (bloc.hidden) return;
+    bloc.className = 'maj maj--' + m.etat;
+    const v = m.version || '';
+    $('maj-texte').textContent = m.etat === 'disponible' ? t('maj_disponible').replace('%s', v)
+      : m.etat === 'telechargement' ? t('maj_telechargement').replace('%s', v)
+      : m.etat === 'installee' ? t('maj_installee').replace('%s', v)
+      : t('maj_erreur').replace('%s', m.erreur || '');
+    $('btn-maj').hidden = !(m.etat === 'disponible' || m.etat === 'erreur');
+    $('btn-maj-page').hidden = m.etat === 'telechargement';
+  }
+
   function rendreAccueil() {
     const enMission = etat.enMission;
     const texte = $('accueil-texte');
@@ -283,6 +300,8 @@ const roulette = (() => {
       rendreModes();
       texte.textContent = etat.tirable ? t('accueil_tirable') : t('accueil_menu');
     }
+
+    rendreMiseAJour();
 
     // La mosaïque des destinations possédées, une seule fois.
     const cle = etat.destinations.map((d) => d.image).join('|');
@@ -783,6 +802,8 @@ const roulette = (() => {
   $('form-code').onsubmit = (e) => { e.preventDefault(); chargerCode(); };
   $('btn-charger').onclick = chargerCode;
   $('btn-fermer').onclick = () => envoyer({ action: 'fermer' });
+  $('btn-maj').onclick = () => { son.clic(); envoyer({ action: 'maj_installer' }); };
+  $('btn-maj-page').onclick = () => envoyer({ action: 'maj_page' });
   $('btn-reglages').onclick = () => { $('reglages').hidden = false; };
   $('btn-retour').onclick = () => { $('reglages').hidden = true; };
 

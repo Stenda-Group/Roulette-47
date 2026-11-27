@@ -150,8 +150,11 @@ std::vector<SDestination> DestinationsDepuisJson(const nlohmann::json& p_Json);
 // les cibles. Rend faux s'il n'y a rien à tirer.
 // p_Exclues : les lieux (identifiants) que le joueur a décochés dans les
 // réglages ; s'ils le sont tous, aucun n'est écarté.
+// p_Jouable écarte en plus des missions (celles d'un DLC que le joueur n'a pas :
+// Droits.h) ; vide, toutes celles qui ont des cibles sont jouables.
 bool TirerDestination(const std::vector<SDestination>& p_Destinations, std::mt19937& p_Hasard, int& p_Lieu, int& p_Mission,
-                      const std::set<std::string>& p_Exclues = {});
+                      const std::set<std::string>& p_Exclues = {},
+                      const std::function<bool(const SMissionConnue&)>& p_Jouable = {});
 
 // Entrée, arme dissimulée et équipement, cohérents avec les méthodes tirées
 // (une seringue létale pour « poison injecté »…).

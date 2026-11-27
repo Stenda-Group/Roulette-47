@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Roulette 47</title>
-<link rel="stylesheet" href="roulette.css?v=37">
+<link rel="stylesheet" href="roulette.css?v=38">
 </head>
 <body>
 <!--
@@ -32,6 +32,12 @@
   <!-- ===================================================== Accueil -->
   <section class="accueil" id="vue-accueil" hidden>
     <div class="accueil__mosaique" id="mosaique"></div>
+    <div class="maj" id="maj" hidden>
+      <svg class="maj__icone" viewBox="0 0 24 24"><use href="#i-telecharger"/></svg>
+      <span class="maj__texte" id="maj-texte"></span>
+      <button class="bouton bouton--principal bouton--petit" id="btn-maj" data-t="maj_installer">Installer</button>
+      <button class="bouton bouton--discret bouton--petit" id="btn-maj-page" data-t="maj_page">Nouveautés</button>
+    </div>
     <div class="accueil__contenu">
       <span class="hors-ligne" id="hors-ligne" hidden><span class="hors-ligne__point"></span><span data-t="hors_ligne_titre">Hors ligne</span></span>
       <span class="sur" data-t="nouveau_contrat">Nouveau contrat</span>
@@ -172,10 +178,11 @@
   <symbol id="i-cintre" viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 1 2-2c0 1.5-2 1.6-2 3.5L3 16a1.2 1.2 0 0 0 .7 2.2h16.6a1.2 1.2 0 0 0 .7-2.2l-9-6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 7h11l4 3v-3l3-1v9l-3-1v-3l-4 3H3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 15v5M4 20h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-tete" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-telecharger" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 
-<script src="texts.js?v=37"></script>
-<script src="roulette.js?v=37"></script>
-<script src="mockup.js?v=37"></script>
+<script src="texts.js?v=38"></script>
+<script src="roulette.js?v=38"></script>
+<script src="mockup.js?v=38"></script>
 </body>
 </html>

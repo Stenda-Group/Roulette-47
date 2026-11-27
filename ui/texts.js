@@ -11,6 +11,12 @@
 
 const TEXTES = {
   fr: {
+    maj_disponible: 'Roulette 47 v%s est disponible.',
+    maj_installer: 'Installer',
+    maj_telechargement: 'Installation de la v%s…',
+    maj_installee: 'v%s installée : relance le jeu pour en profiter.',
+    maj_erreur: 'Mise à jour impossible : %s.',
+    maj_page: 'Nouveautés',
     fermer_titre: 'Fermer (F9)',
     nouveau_contrat: 'Nouveau contrat',
     accueil_titre: 'Laisse le hasard<br>choisir ta cible',
@@ -118,6 +124,12 @@ const TEXTES = {
   },
 
   en: {
+    maj_disponible: 'Roulette 47 v%s is available.',
+    maj_installer: 'Install',
+    maj_telechargement: 'Installing v%s…',
+    maj_installee: 'v%s installed: restart the game to use it.',
+    maj_erreur: 'Update failed: %s.',
+    maj_page: "What's new",
     fermer_titre: 'Close (F9)',
     nouveau_contrat: 'New contract',
     accueil_titre: 'Let fate<br>pick your target',
@@ -225,6 +237,12 @@ const TEXTES = {
   },
 
   it: {
+    maj_disponible: 'Roulette 47 v%s è disponibile.',
+    maj_installer: 'Installa',
+    maj_telechargement: 'Installazione della v%s…',
+    maj_installee: 'v%s installata: riavvia il gioco per usarla.',
+    maj_erreur: 'Aggiornamento non riuscito: %s.',
+    maj_page: 'Novità',
     fermer_titre: 'Chiudi (F9)',
     nouveau_contrat: 'Nuovo contratto',
     accueil_titre: 'Lascia che il caso<br>scelga il bersaglio',
@@ -332,6 +350,12 @@ const TEXTES = {
   },
 
   es: {
+    maj_disponible: 'Roulette 47 v%s está disponible.',
+    maj_installer: 'Instalar',
+    maj_telechargement: 'Instalando la v%s…',
+    maj_installee: 'v%s instalada: reinicia el juego para usarla.',
+    maj_erreur: 'La actualización falló: %s.',
+    maj_page: 'Novedades',
     fermer_titre: 'Cerrar (F9)',
     nouveau_contrat: 'Nuevo contrato',
     accueil_titre: 'Deja que el azar<br>elija tu objetivo',
@@ -439,6 +463,12 @@ const TEXTES = {
   },
 
   ru: {
+    maj_disponible: 'Доступна Roulette 47 v%s.',
+    maj_installer: 'Установить',
+    maj_telechargement: 'Установка v%s…',
+    maj_installee: 'v%s установлена: перезапусти игру, чтобы её использовать.',
+    maj_erreur: 'Обновление не удалось: %s.',
+    maj_page: 'Что нового',
     fermer_titre: 'Закрыть (F9)',
     nouveau_contrat: 'Новый контракт',
     accueil_titre: 'Пусть случай<br>выберет цель',
